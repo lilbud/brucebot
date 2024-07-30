@@ -3,3 +3,4 @@ psycopg
 dateparser
 python-dotenv
 reactionmenu
+psycopg_pool

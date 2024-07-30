@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import discord
 import psycopg
 from cogs.bot_stuff import bot_embed, db
@@ -15,7 +13,6 @@ class Tour(commands.Cog):
         """Init Tour cog with bot."""
         self.bot = bot
         self.description = "Bruce's various tours."
-        self.thumbpath = Path(Path(__file__).parents[2], "images", "tours")
 
     async def default_tour_embed(
         self,
@@ -114,8 +111,6 @@ class Tour(commands.Cog):
             f"http://brucebase.wikidot.com/stats:songs-{tour["brucebase_id"]}"
         )
 
-        thumbnail = f"{tour['brucebase_id']}.jpg"
-
         embed = await bot_embed.create_embed(
             ctx,
             tour["tour_name"],
@@ -123,13 +118,8 @@ class Tour(commands.Cog):
             f"http://brucebase.wikidot.com/tour:{tour["brucebase_id"]}",
         )
 
-        if Path(self.thumbpath, thumbnail).exists():
-            file = discord.File(
-                Path(self.thumbpath, thumbnail),
-                filename=thumbnail,
-            )
-
-            embed.set_thumbnail(url=f"attachment://{thumbnail}")
+        thumbnail = f"https://raw.githubusercontent.com/lilbud/brucebot/main/images/tours/{tour['brucebase_id']}.jpg"
+        embed.set_thumbnail(url=thumbnail)
 
         embed.add_field(
             name="Shows:",
@@ -155,10 +145,7 @@ class Tour(commands.Cog):
             inline=False,
         )
 
-        try:
-            await ctx.send(file=file, embed=embed)
-        except UnboundLocalError:
-            await ctx.send(embed=embed)
+        await ctx.send(embed=embed)
 
     @commands.command(name="tour", aliases=["t"])
     async def tour_find(

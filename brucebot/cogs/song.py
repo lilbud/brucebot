@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import discord
 import psycopg
 from cogs.bot_stuff import bot_embed, db, utils
@@ -13,7 +11,6 @@ class Song(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         """Init Song cog with bot."""
         self.bot = bot
-        self.imgpath = Path(Path(__file__).parents[2], "images", "releases")
         self.description = "Find songs that Bruce has played live."
 
     async def get_song_info(self, url: str, cur: psycopg.AsyncCursor) -> dict:
@@ -55,7 +52,8 @@ class Song(commands.Cog):
     ) -> dict:
         """Get info on the first release of a given song."""
         res = await cur.execute(
-            """SELECT * FROM "songs_first_release" WHERE song_id=%s""",
+            """SELECT * FROM "songs_first_release"
+                WHERE song_id=%s ORDER BY date::date ASC;""",
             (song,),
         )
 
@@ -89,35 +87,28 @@ class Song(commands.Cog):
         release: dict,
         ctx: commands.Context,
         cur: psycopg.AsyncCursor,
-    ) -> discord.File | discord.Embed:
+    ) -> discord.Embed:
         """Create the song embed and sending."""
         embed = await bot_embed.create_embed(
             ctx=ctx,
             title=song["song_name"],
         )
 
-        try:
+        if release["release_thumb"]:
+            embed.set_thumbnail(url=release["release_thumb"])
+        else:
+            embed.set_thumbnail(
+                url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
+            )
+
+        if release is not None:
             embed.add_field(
                 name="Original Release:",
                 value=f"{release['release_name']} ({release['date']})",
                 inline=False,
             )
 
-            file = discord.File(
-                fp=str(Path(self.imgpath, release["release_thumb"])),
-                filename=release["release_thumb"],
-            )
-
-            embed.set_thumbnail(url=f"attachment://{release["release_thumb"]}")
-        except TypeError:
-            file = discord.File(
-                fp=str(Path(self.imgpath, "default.jpg")),
-                filename="default.jpg",
-            )
-
-            embed.set_thumbnail(url="attachment://default.jpg")
-
-        if song["original_artist"] is not None:
+        if song["original_artist"] and song["original_artist"] != "Bruce Springsteen":
             embed.add_field(
                 name="Original Artist:",
                 value=song["original_artist"],
@@ -159,9 +150,11 @@ class Song(commands.Cog):
             embed.add_field(name="Closer:", value=song["closer"])
             embed.add_field(name="Frequency:", value=f"{song["frequency"]}%")
 
-        embed.set_footer(text=f"latency: {round(self.bot.latency * 1000)}")
+        # embed.set_footer(
+        #     text="Num next to performances is how many after first release\nNum next to last date is how many events since last play.",  # noqa: E501
+        # )
 
-        return file, embed
+        return embed
 
     async def song_find_fuzzy(
         self,
@@ -225,7 +218,7 @@ class Song(commands.Cog):
                         cur=cur,
                     )
 
-                    file, embed = await self.song_embed(
+                    embed = await self.song_embed(
                         song=song_info,
                         release=release,
                         ctx=ctx,
@@ -240,7 +233,7 @@ class Song(commands.Cog):
 
                     view.add_item(item=brucebase_button)
 
-                    await ctx.send(embed=embed, file=file, view=view)
+                    await ctx.send(embed=embed, view=view)
 
                 else:
                     embed = await bot_embed.not_found_embed(

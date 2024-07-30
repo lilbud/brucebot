@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import discord
 import psycopg
 from cogs.bot_stuff import bot_embed, db, utils
@@ -14,15 +12,13 @@ class Album(commands.Cog):
         """Init Album cog with bot."""
         self.bot = bot
         self.description = "Find Bruce's albums"
-        self.thumbpath = Path(Path(__file__).parents[2], "images", "releases")
 
     async def album_embed(
         self,
         album: dict,
         album_stats: dict,
         ctx: commands.Context,
-        thumb: str = "default.jpg",
-    ) -> tuple[discord.File, discord.Embed]:
+    ) -> discord.Embed:
         """Create embed with provided album info and send."""
         embed = await bot_embed.create_embed(
             ctx=ctx,
@@ -30,14 +26,11 @@ class Album(commands.Cog):
         )
 
         if album["release_thumb"]:
-            thumb = album["release_thumb"]
-
-        file = discord.File(
-            fp=Path(self.thumbpath, thumb),
-            filename=thumb,
-        )
-
-        embed.set_thumbnail(url=f"attachment://{thumb}")
+            embed.set_thumbnail(url=album["release_thumb"])
+        else:
+            embed.set_thumbnail(
+                url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
+            )
 
         embed.add_field(name="Release Date:", value=album["release_date"], inline=True)
         embed.add_field(name="Album Type:", value=album["release_type"], inline=True)
@@ -64,7 +57,7 @@ class Album(commands.Cog):
             inline=True,
         )
 
-        return file, embed
+        return embed
 
     async def get_album_stats(
         self,
@@ -150,7 +143,7 @@ class Album(commands.Cog):
                         cur=cur,
                     )
 
-                    file, embed = await self.album_embed(
+                    embed = await self.album_embed(
                         album=album,
                         album_stats=stats,
                         ctx=ctx,
@@ -166,7 +159,7 @@ class Album(commands.Cog):
                     view.add_item(item=brucebase_button)
                     view.add_item(item=musicbrainz_button)
 
-                    await ctx.send(embed=embed, file=file, view=view)
+                    await ctx.send(embed=embed, view=view)
                 else:
                     embed = await bot_embed.not_found_embed(
                         command=self.__class__.__name__,

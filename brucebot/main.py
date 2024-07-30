@@ -73,11 +73,10 @@ class BruceBot(commands.Bot):
             sys.exit(0)
 
 
-if __name__ == "__main__":
-    # psycopg requires this while using a AsyncConnectionPool
-    if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+# psycopg requires this while using a AsyncConnectionPool
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    bot = BruceBot(prefix="!", ext_dir=Path(Path(__file__).parent, "cogs"))
-    bot.help_command = MyHelp()
-    asyncio.run(bot.run_bot())
+bot = BruceBot(prefix="!", ext_dir=Path(Path(__file__).parent, "cogs"))
+bot.help_command = MyHelp()
+asyncio.run(bot.run_bot())

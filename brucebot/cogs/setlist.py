@@ -110,7 +110,7 @@ class Setlist(commands.Cog):
         """Use provided Brucebase URL to pull the exact event instead of date."""
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             res = await cur.execute(
-                """SELECT event_id FROM events WHERE event_url=%s""",
+                """SELECT e.* FROM events_with_info e WHERE event_url=%s""",
                 (url,),
             )
 
@@ -300,7 +300,7 @@ class Setlist(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command=self.__class__.__name__,
-                    message=date,
+                    message=argument,
                 )
                 await ctx.send(embed=embed)
 

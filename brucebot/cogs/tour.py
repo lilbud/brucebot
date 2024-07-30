@@ -118,7 +118,7 @@ class Tour(commands.Cog):
             f"http://brucebase.wikidot.com/tour:{tour["brucebase_id"]}",
         )
 
-        thumbnail = f"https://raw.githubusercontent.com/lilbud/brucebot/main/images/tours/{tour['brucebase_id']}.jpg"
+        thumbnail = f"https://raw.githubusercontent.com/lilbud/brucebot/main/images/tours/{tour['brucebase_tag']}.jpg"
         embed.set_thumbnail(url=thumbnail)
 
         embed.add_field(

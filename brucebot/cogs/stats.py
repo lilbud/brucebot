@@ -46,7 +46,7 @@ class Stats(commands.Cog):
                 similarity
             FROM
                 "songs" s,
-                plainto_tsquery(%(query)s) query,
+                plainto_tsquery('english', %(query)s) query,
                 ts_rank(fts, query) rank,
                 SIMILARITY(%(query)s, coalesce(short_name, song_name)) similarity
             WHERE query @@ fts AND similarity >= 0.45 AND s.num_plays_public > 0
@@ -94,7 +94,7 @@ class Stats(commands.Cog):
                 t.tour_name
             FROM
                 "tours" t,
-                plainto_tsquery(%(tour)s) query
+                plainto_tsquery('english', %(tour)s) query
             WHERE query @@ fts
             ORDER BY t.id ASC NULLS LAST;""",
             {"tour": tour_query},
@@ -150,7 +150,7 @@ class Stats(commands.Cog):
                             ON s.position = o.position WHERE o.song_id=%s
                             AND o.position LIKE '%%Opener'
                             GROUP BY o.song_id, o.position, o.num
-                            ORDER BY any_value(s.song_num::int) ASC;""",
+                            ORDER BY min(s.song_num::int) ASC;""",
                         (songs[0]["brucebase_url"],),
                     )
 
@@ -207,7 +207,7 @@ class Stats(commands.Cog):
                             ON s.position = o.position WHERE o.song_id=%s
                             AND o.position LIKE '%%Closer'
                             GROUP BY o.song_id, o.position, o.num
-                            ORDER BY any_value(s.song_num::int) ASC;""",
+                            ORDER BY min(s.song_num::int) ASC;""",
                         (songs[0]["brucebase_url"],),
                     )
 
@@ -241,10 +241,11 @@ class Stats(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        tour: str = "",
+        argument: str = "",
     ) -> None:
         """Get list of show openers for given tour."""
-        if tour == "":
+        print(argument)
+        if argument == "":
             await ctx.send_help(ctx.command)
             return
 
@@ -256,7 +257,9 @@ class Stats(commands.Cog):
             async with pool.connection() as conn, conn.cursor(
                 row_factory=dict_row,
             ) as cur:
-                tour = await self.find_tour(cur, tour)
+                tour = await self.find_tour(cur, argument)
+
+                print(tour)
 
                 if tour:
                     stats = await self.get_tour_stats(
@@ -277,7 +280,7 @@ class Stats(commands.Cog):
                 else:
                     embed = await bot_embed.not_found_embed(
                         command="Stats",
-                        message=f"Opener, Tour: {tour}",
+                        message=f"Opener, Tour: {argument}",
                     )
 
                     await ctx.send(embed=embed)

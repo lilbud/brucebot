@@ -1,0 +1,10 @@
+\.ruff_cache
+\.vs_code
+\_notes
+.env
+test.py
+\__pycache__
+_hello.py
+\.vscode
+/images/archives
+/images/years

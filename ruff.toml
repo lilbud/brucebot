@@ -1,0 +1,17 @@
+[lint]
+select = ["ALL"]
+
+ignore = [
+    "T201", # ignore printing
+    "FA102", # future-required-type-annotation
+    "PERF203", # try-except-in-loop
+    "D100", # missing docstring
+    # "F401", # missing imports
+    "ANN101", # missing-type-self
+    "RUF001", # ambiguous-unicode-character-string
+]
+
+[lint.per-file-ignores]
+# Allow unused imports in __init__.py files.
+"__init__.py" = ["F401", "D104"]
+"view.py" = ["D102", "ANN401", "E501"]

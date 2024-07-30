@@ -1,0 +1,5 @@
+discord.py
+psycopg
+dateparser
+python-dotenv
+reactionmenu

@@ -1,0 +1,83 @@
+import asyncio
+import logging
+import os
+import sys
+from pathlib import Path
+
+import discord
+from cogs._help import MyHelp
+from discord.ext import commands
+from dotenv import load_dotenv
+
+
+class BruceBot(commands.Bot):
+    """Custom Discord.py Bot implementation."""
+
+    logging.basicConfig(format="%(message)s", level=logging.INFO)
+
+    def __init__(self, prefix: str, ext_dir: Path) -> None:
+        """Initialize custom bot."""
+        intents = discord.Intents.default()
+        intents.message_content = True
+
+        super().__init__(command_prefix=prefix, intents=intents, case_insensitive=True)
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.ext_dir = ext_dir
+        self.testing_channel = 1250545846160982047
+
+    async def load_extensions(self) -> None:
+        """Load cogs from specified cog folder."""
+        if not self.ext_dir.is_dir():
+            logging.info("Extension directory %s does not exist.", self.ext_dir)
+            return
+        for filename in self.ext_dir.iterdir():
+            if filename.suffix == ".py" and not filename.name.startswith("_"):
+                try:
+                    await self.load_extension(f"cogs.{filename.stem}")
+                    self.logger.info("Loaded extension %s", filename.stem)
+                except commands.ExtensionError:
+                    self.logger.exception("Failed to load extension %s", filename.stem)
+
+    async def on_ready(self) -> None:
+        """Send when bot is online and ready."""
+        self.logger.info("Logged in as %s", self.user)
+
+    async def close(self) -> None:
+        """Close bot on keyboard interrupt."""
+        await super().close()
+
+    async def setup_hook(self) -> None:
+        """Load cogs from directory."""
+        await self.load_extensions()
+
+    async def on_message(self, message: discord.Message) -> None:
+        """When message sent."""
+        if message.author.bot:  # If the message is sent by a bot, return
+            return
+
+        await self.process_commands(message)  # This is required to process commands
+
+    async def run_bot(self) -> None:
+        """Run bot using provided token."""
+        load_dotenv()
+        try:
+            await self.login(str(os.getenv("BOT_TOKEN")))
+            await self.connect()
+        except (
+            discord.LoginFailure,
+            KeyboardInterrupt,
+            asyncio.exceptions.CancelledError,
+        ):
+            self.logger.info("Exiting...")
+            await self.close()
+            sys.exit(0)
+
+
+if __name__ == "__main__":
+    # psycopg requires this while using a AsyncConnectionPool
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    bot = BruceBot(prefix="!", ext_dir=Path(Path(__file__).parent, "cogs"))
+    bot.help_command = MyHelp()
+    asyncio.run(bot.run_bot())

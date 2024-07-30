@@ -1,7 +1,7 @@
 import traceback
 
 import discord
-from cogs.bot_stuff import bot_embed, db
+from cogs.bot_stuff import bot_embed
 from discord.ext import commands
 
 
@@ -66,14 +66,18 @@ class Admin(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def logout(self: "Admin", ctx: commands.Context) -> None:
-        """Logout and shutdown bot."""
-        async with await db.create_pool() as pool:
-            await ctx.send("Logging Out")
-            await pool.close()
-            await self.bot.close()
+    # I had this when I was developing locally
+    # however, I'm not sure how it would work when on heroku
+    # when I can just restart the dyno
+
+    # @commands.command(hidden=True)
+    # @commands.is_owner()
+    # async def logout(self: "Admin", ctx: commands.Context) -> None:
+    #     """Logout and shutdown bot."""
+    #     async with await db.create_pool() as pool:
+    #         await ctx.send("Logging Out")
+    #         await pool.close()
+    #         await self.bot.close()
 
 
 async def setup(bot: commands.Bot) -> None:

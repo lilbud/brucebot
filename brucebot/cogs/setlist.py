@@ -106,6 +106,16 @@ class Setlist(commands.Cog):
 
             return await res.fetchone()
 
+    async def parse_brucebase_url(self, url: str, pool: AsyncConnectionPool) -> str:
+        """Use provided Brucebase URL to pull the exact event instead of date."""
+        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            res = await cur.execute(
+                """SELECT event_id FROM events WHERE event_url=%s""",
+                (url,),
+            )
+
+            return await res.fetchall()
+
     async def get_events_by_fuzzy_date(
         self,
         date: str,
@@ -245,26 +255,27 @@ class Setlist(commands.Cog):
             if argument == "":
                 argument = await self.get_latest_setlist(pool=pool)
 
-            date = await utils.date_parsing(argument)
+            if "http://brucebase.wikidot.com" in argument:
+                events = await self.parse_brucebase_url(argument, pool)
+            else:
+                date = await utils.date_parsing(argument)
 
-            print(date)
+                print(date)
 
-            try:
-                date.strftime("%Y-%m-%d")
-            except AttributeError:
-                embed = discord.Embed(
-                    title="Incorrect Date Format",
-                    description=f"Failed to parse given date: `{date}`",
+                try:
+                    date.strftime("%Y-%m-%d")
+                except AttributeError:
+                    embed = discord.Embed(
+                        title="Incorrect Date Format",
+                        description=f"Failed to parse given date: `{date}`",
+                    )
+                    await ctx.send(embed=embed)
+                    return
+
+                events = await self.get_events_by_exact_date(
+                    date=date.strftime("%Y-%m-%d"),
+                    pool=pool,
                 )
-                await ctx.send(embed=embed)
-                return
-
-            events = await self.get_events_by_exact_date(
-                date=date.strftime("%Y-%m-%d"),
-                pool=pool,
-            )
-
-            print(events)
 
             if events:
                 if len(events) == 1:

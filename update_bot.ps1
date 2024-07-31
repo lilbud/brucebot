@@ -8,6 +8,6 @@ while ($message -eq "") {
 git add .
 git commit -m $message
 git push origin main
-git push heroku main
+# git push heroku main
 
 heroku ps:restart worker.1 -a brucebot-discord

@@ -24,7 +24,8 @@ class BruceBot(commands.Bot):
         super().__init__(command_prefix=prefix, intents=intents, case_insensitive=True)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.ext_dir = ext_dir
-        self.testing_channel = 1250545846160982047
+        self.testing_channel = [1250545846160982047]
+        self.testing_server = 735698850802565171
 
     async def load_extensions(self) -> None:
         """Load cogs from specified cog folder."""
@@ -61,7 +62,7 @@ class BruceBot(commands.Bot):
             return
 
         # quick way to enable/disable testing
-        if message.channel.id != self.testing_channel:
+        if message.guild.id != self.testing_server:
             return
 
         await self.process_commands(message)

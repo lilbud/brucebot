@@ -98,7 +98,7 @@ class Song(commands.Cog):
             embed.set_thumbnail(url=release["release_thumb"])
         except TypeError:
             embed.set_thumbnail(
-                url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
+                url=r"https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
             )
 
         if release is not None:

@@ -60,6 +60,10 @@ class BruceBot(commands.Bot):
         if message.author.bot:  # If the message is sent by a bot, return
             return
 
+        # quick way to enable/disable testing
+        if message.channel.id != self.testing_channel:
+            return
+
         await self.process_commands(message)
 
     async def run_bot(self) -> None:

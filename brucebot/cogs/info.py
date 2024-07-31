@@ -61,7 +61,7 @@ class Info(commands.Cog):
             info_embed = await bot_embed.create_embed(
                 ctx,
                 title="Brucebot v2.0 Info",
-                description="A Discord bot to get info on Bruce Springsteen's performing history",
+                description="A Discord bot to get info on Bruce Springsteen's performing history",  # noqa: E501
                 url="https://github.com/lilbud/brucebot",
             )
 

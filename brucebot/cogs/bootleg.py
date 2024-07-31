@@ -1,7 +1,6 @@
 from cogs.bot_stuff import bot_embed, utils, viewmenu
 from discord.ext import commands
 from psycopg.rows import dict_row
-from psycopg_pool import AsyncConnectionPool
 from reactionmenu import ViewButton
 
 from brucebot.cogs.bot_stuff import db
@@ -73,7 +72,6 @@ class Bootleg(commands.Cog):
         ctx: commands.Context,
         *,
         argument: str = "",
-        pool: AsyncConnectionPool,
     ) -> None:
         """Search database for bootlegs by date.
 

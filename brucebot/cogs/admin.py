@@ -66,10 +66,11 @@ class Admin(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    # I had this when I was developing locally
-    # however, I'm not sure how it would work when on heroku
-    # when I can just restart the dyno
-
+    # I created this when developing locally
+    # as it quickly shuts down the bot, as CTRL+C doesn't always work
+    # wasn't sure how it would work on heroku, but apparently when the close
+    # command is received, heroku attempts to reboot any closed dynos
+    # so it acts like a reboot instead
     @commands.command(hidden=True)
     @commands.is_owner()
     async def logout(self: "Admin", ctx: commands.Context) -> None:

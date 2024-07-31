@@ -94,9 +94,9 @@ class Song(commands.Cog):
             title=song["song_name"],
         )
 
-        if release["release_thumb"]:
+        try:
             embed.set_thumbnail(url=release["release_thumb"])
-        else:
+        except TypeError:
             embed.set_thumbnail(
                 url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
             )

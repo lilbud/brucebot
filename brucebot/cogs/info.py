@@ -42,7 +42,7 @@ class Info(commands.Cog):
                 for k, v in counts.items()
             ]
 
-    @commands.command(name="info")
+    @commands.command(name="bbinfo")
     async def get_info(
         self,
         ctx: commands.Context,

@@ -1,0 +1,64 @@
+album
+    !album
+        should return help
+    !album river
+        should return album embed for river
+    !album none
+        should return error
+
+bootleg
+    !boot - help
+    !boot 1978-09-19 - returns passaic boots
+    !boot none - error
+
+cover
+    !cover - help
+    !cover 1978-09-19 - returns passaic single cover
+    !cover 2012-07-28 - returns gothenburg covers
+
+location
+    !location - help
+    !location city philly - philly stats
+    !location state PA - pennsylvania stats
+    !location country USA - USA stats
+    !location none - error
+
+on this day
+    !otd - current day
+    !otd Oct 7 - returns october 7 events
+    !otd none - error
+
+relation
+    !rel - help
+    !rel stevie - steve van zandt
+    !rel none - error
+
+setlist
+    !sl - latest setlist
+    !sl sept 19 1978 - passaic
+    !sl none - error
+
+song
+    !song - help
+    !song river - the river
+    !song none - error
+
+stats
+    !opener - help
+    !opener year YYYY - year stats
+    !opener tour X - tour stats
+    !closer - help
+    !closer year YYYY - year stats
+    !closer tour X - tour stats
+
+tour
+    !tour - help
+    !tour wrecking ball - WB tour
+    !tour none - error
+
+help
+    !bbhelp - help command main
+    !bbhelp [command] - command specific help
+
+info
+    !bbinfo - bot info

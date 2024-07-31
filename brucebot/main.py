@@ -86,5 +86,8 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 bot = BruceBot(prefix="!", ext_dir=Path(Path(__file__).parent, "cogs"))
-bot.help_command = MyHelp()
+
+attributes = {"name": "bbhelp"}
+
+bot.help_command = MyHelp(command_attrs=attributes)
 asyncio.run(bot.run_bot())

@@ -1,4 +1,4 @@
-from cogs.bot_stuff import bot_embed, db
+from cogs.bot_stuff import bot_embed, db, viewmenu
 from discord.ext import commands
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
@@ -18,12 +18,13 @@ class Info(commands.Cog):
             res = await cur.execute(
                 """
                 SELECT
-                    count(distinct b.brucebase_url) AS band_count,
-                    count(distinct e.event_id) AS event_count,
-                    count(distinct r.brucebase_url) AS people_count,
-                    count(distinct s.event_id) AS setlist_count,
-                    count(distinct s1.brucebase_url) AS song_count,
-                    count(distinct v.brucebase_url) AS venue_count
+                    count(distinct b.brucebase_url)  || ' bands' AS band_count,
+                    count(distinct e.event_id)  || ' events' AS event_count,
+                    count(distinct r.brucebase_url) || ' people' AS people_count,
+                    count(distinct s.event_id)  || ' setlists' AS setlist_count,
+                    count(distinct s1.brucebase_url) || ' songs' AS song_count,
+                    count(distinct v.brucebase_url) || ' venues' AS venue_count,
+                    (SELECT count(id) FROM bootlegs) || ' bootlegs(s)' AS bootleg_count
                 FROM
                     events e
                 LEFT JOIN setlists s ON s.event_id = e.event_id
@@ -34,7 +35,12 @@ class Info(commands.Cog):
                 """,
             )
 
-            return await res.fetchall()
+            counts = await res.fetchone()
+
+            return [
+                f"- **{k.replace("_", " ").title()}** - _{v}_"
+                for k, v in counts.items()
+            ]
 
     @commands.command(name="info")
     async def get_info(
@@ -45,14 +51,54 @@ class Info(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
+            menu = await viewmenu.create_view_menu(
+                ctx,
+                style="Page $/&",
+            )
+
             db_counts = await self.db_stats(pool)
 
             info_embed = await bot_embed.create_embed(
                 ctx,
-                title="Brucebot v2.0",
+                title="Brucebot v2.0 Info",
                 description="A Discord bot to get info on Bruce Springsteen's performing history",
-                url="",
+                url="https://github.com/lilbud/brucebot",
             )
+
+            info_embed.set_footer(text="Go to next page for database stats")
+
+            sources = [
+                "- [Brucebase](http://brucebase.wikidot.com/): primary source of data (songs, setlists, etc.)",  # noqa: E501
+                "- [SpringsteenLyrics](https://www.springsteenlyrics.com/index.php): primary source of Bootleg info.",  # noqa: E501
+                "- [SpringsteenDVDs](https://springsteendvds.wordpress.com/): secondary bootleg info source (videos)",  # noqa: E501
+                "- [Musicbrainz](https://musicbrainz.org/): info on releases/bootlegs",
+            ]
+
+            info_embed.add_field(
+                name="History:",
+                value="- Version 1.0: March 2023 - July 2024\n- Version 2.0: July 2024 - current",  # noqa: E501
+                inline=False,
+            )
+
+            info_embed.add_field(name="Sources:", value="\n".join(sources))
+
+            info_embed.add_field(
+                name="Credits:",
+                value="- [See Here for Credits List](https://github.com/lilbud/databruce/blob/main/CREDITS.md)",
+                inline=False,
+            )
+
+            menu.add_page(embed=info_embed)
+
+            counts_embed = await bot_embed.create_embed(
+                ctx,
+                title="Database Stats",
+                description="\n".join(db_counts),
+            )
+
+            menu.add_page(embed=counts_embed)
+
+            await menu.start()
 
 
 async def setup(bot: commands.Bot) -> None:

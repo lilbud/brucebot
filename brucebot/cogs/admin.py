@@ -24,7 +24,7 @@ class Admin(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(hidden=True)
+    @commands.command(hidden=True, aliases=["re"])
     @commands.is_owner()
     async def reload(self, ctx: commands.Context, extension: str) -> None:
         """Reload the provided extension."""

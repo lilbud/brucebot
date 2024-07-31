@@ -1,9 +1,7 @@
-from cogs.bot_stuff import bot_embed, utils, viewmenu
+from cogs.bot_stuff import bot_embed, db, utils, viewmenu
 from discord.ext import commands
 from psycopg.rows import dict_row
 from reactionmenu import ViewButton
-
-from brucebot.cogs.bot_stuff import db
 
 
 class Bootleg(commands.Cog):

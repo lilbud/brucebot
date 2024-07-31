@@ -77,7 +77,7 @@ class Admin(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.send("Logging Out")
             await pool.close()
-            await self.bot.logout()
+            await self.bot.close()
 
 
 async def setup(bot: commands.Bot) -> None:

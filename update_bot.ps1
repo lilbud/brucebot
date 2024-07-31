@@ -6,6 +6,6 @@ while ($message -eq "") {
 }
 
 git add .
-git commit -am $message
-git push github main
+git commit -m $message
+git push origin main
 git push heroku main

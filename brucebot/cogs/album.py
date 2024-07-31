@@ -100,12 +100,10 @@ class Album(commands.Cog):
 
         Album can be found by name or alias.
         """
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
-            await pool.open()
+            if argument == "":
+                await ctx.send_help(ctx.command)
+                return
 
             await ctx.typing()
 

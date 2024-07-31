@@ -150,10 +150,6 @@ class Song(commands.Cog):
             embed.add_field(name="Closer:", value=song["closer"])
             embed.add_field(name="Frequency:", value=f"{song["frequency"]}%")
 
-        # embed.set_footer(
-        #     text="Num next to performances is how many after first release\nNum next to last date is how many events since last play.",  # noqa: E501
-        # )
-
         return embed
 
     async def song_find_fuzzy(
@@ -196,8 +192,6 @@ class Song(commands.Cog):
         argument = await utils.clean_message(argument)
 
         async with await db.create_pool() as pool:
-            await pool.open()
-
             await ctx.typing()
 
             async with pool.connection() as conn, conn.cursor(

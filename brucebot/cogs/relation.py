@@ -91,8 +91,6 @@ class Relation(commands.Cog):
             return
 
         async with await db.create_pool() as pool:
-            await pool.open()
-
             await ctx.typing()
 
             async with pool.connection() as conn, conn.cursor(

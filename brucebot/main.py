@@ -6,6 +6,7 @@ from pathlib import Path
 
 import discord
 from cogs._help import MyHelp
+from cogs.bot_stuff import db
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -50,26 +51,29 @@ class BruceBot(commands.Bot):
         """Load cogs from directory."""
         await self.load_extensions()
 
+        # opening connection pool to database
+        self.pool = await db.create_pool()
+        await self.pool.open()
+
     async def on_message(self, message: discord.Message) -> None:
         """When message sent."""
         if message.author.bot:  # If the message is sent by a bot, return
             return
 
-        await self.process_commands(message)  # This is required to process commands
+        await self.process_commands(message)
 
     async def run_bot(self) -> None:
         """Run bot using provided token."""
         load_dotenv()
         try:
-            await self.login(str(os.getenv("BOT_TOKEN")))
-            await self.connect()
+            await self.start(token=str(os.getenv("BOT_TOKEN")))
         except (
             discord.LoginFailure,
             KeyboardInterrupt,
             asyncio.exceptions.CancelledError,
         ):
             self.logger.info("Exiting...")
-            await self.close()
+            await self.logout()
             sys.exit(0)
 
 

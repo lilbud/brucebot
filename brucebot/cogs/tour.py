@@ -156,8 +156,6 @@ class Tour(commands.Cog):
     ) -> None:
         """Find tour based on input."""
         async with await db.create_pool() as pool:
-            await pool.open()
-
             await ctx.typing()
 
             async with pool.connection() as conn, conn.cursor(

@@ -1,7 +1,10 @@
-from cogs.bot_stuff import bot_embed, db, utils, viewmenu
+from cogs.bot_stuff import bot_embed, utils, viewmenu
 from discord.ext import commands
 from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
 from reactionmenu import ViewButton
+
+from brucebot.cogs.bot_stuff import db
 
 
 class Bootleg(commands.Cog):
@@ -70,6 +73,7 @@ class Bootleg(commands.Cog):
         ctx: commands.Context,
         *,
         argument: str = "",
+        pool: AsyncConnectionPool,
     ) -> None:
         """Search database for bootlegs by date.
 
@@ -79,20 +83,18 @@ class Bootleg(commands.Cog):
             await ctx.send_help(ctx.command)
             return
 
-        date = await utils.date_parsing(argument)
-
-        try:
-            date.strftime("%Y-%m-%d")
-        except AttributeError:
-            embed = await bot_embed.not_found_embed(
-                command=self.__class__.__name__,
-                message=argument,
-            )
-            await ctx.send(embed=embed)
-            return
-
         async with await db.create_pool() as pool:
-            await pool.open()
+            date = await utils.date_parsing(argument)
+
+            try:
+                date.strftime("%Y-%m-%d")
+            except AttributeError:
+                embed = await bot_embed.not_found_embed(
+                    command=self.__class__.__name__,
+                    message=argument,
+                )
+                await ctx.send(embed=embed)
+                return
 
             await ctx.typing()
 

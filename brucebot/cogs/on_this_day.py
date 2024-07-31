@@ -24,8 +24,6 @@ class OnThisDay(commands.Cog, name="On This Day"):
     ) -> None:
         """Find events on a given day, or current day if empty."""
         async with await db.create_pool() as pool:
-            await pool.open()
-
             await ctx.typing()
 
             async with pool.connection() as conn, conn.cursor(

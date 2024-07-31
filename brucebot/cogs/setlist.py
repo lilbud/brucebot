@@ -155,22 +155,19 @@ class Setlist(commands.Cog):
         venue_url = await utils.format_link(event["venue_url"], event["venue_loc"])
         releases = []
 
-        description = f"**{venue_url}**"
+        description = [f"**Venue:** {venue_url}"]
 
-        if event["note"] is not None:
-            description = f"**{venue_url}**\n_{event['note']}_"
+        if event["event_title"]:
+            description.append(f"**Title:** {event['event_title']}")
 
-        embed = await bot_embed.create_embed(
-            ctx=ctx,
-            title=event["formatted_date"],
-            description=description,
-            url=event["event_url"],
-        )
+        if event["note"]:
+            description.append(f"**Notes:**\n- {event['note']}")
 
         nugs_release = await self.get_nugs_release(
             event_id=event["event_id"],
             pool=pool,
         )
+
         archive = await self.get_archive_links(event_id=event["event_id"], pool=pool)
 
         if nugs_release:
@@ -180,7 +177,14 @@ class Setlist(commands.Cog):
             releases.append(f"[Archive.org]({archive['url']})")
 
         if len(releases) > 0:
-            embed.add_field(name="Releases:", value="\n".join(releases))
+            description.append(f"**Releases:** {", ".join(releases)}")
+
+        embed = await bot_embed.create_embed(
+            ctx=ctx,
+            title=event["formatted_date"],
+            description="\n".join(description),
+            url=event["event_url"],
+        )
 
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             res = await cur.execute(
@@ -248,8 +252,6 @@ class Setlist(commands.Cog):
         Note: date must be past, not a future date.
         """
         async with await db.create_pool() as pool:
-            await pool.open()
-
             await ctx.typing()
 
             if argument == "":

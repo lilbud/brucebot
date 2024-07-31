@@ -25,7 +25,6 @@ class BruceBot(commands.Bot):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.ext_dir = ext_dir
         self.testing_channel = 1250545846160982047
-        self.bot = bot
 
     async def load_extensions(self) -> None:
         """Load cogs from specified cog folder."""

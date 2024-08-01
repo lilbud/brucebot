@@ -89,16 +89,10 @@ class Song(commands.Cog):
         cur: psycopg.AsyncCursor,
     ) -> discord.Embed:
         """Create the song embed and sending."""
-        if song["original_artist"] and song["short_name"] is not None:
-            embed = await bot_embed.create_embed(
-                ctx=ctx,
-                title=song["short_name"],
-            )
-        else:
-            embed = await bot_embed.create_embed(
-                ctx=ctx,
-                title=song["song_name"],
-            )
+        embed = await bot_embed.create_embed(
+            ctx=ctx,
+            title=song["song_name"],
+        )
 
         try:
             embed.set_thumbnail(url=release["release_thumb"])

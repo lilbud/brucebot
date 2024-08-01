@@ -89,7 +89,7 @@ class Song(commands.Cog):
         cur: psycopg.AsyncCursor,
     ) -> discord.Embed:
         """Create the song embed and sending."""
-        if song["original_artist"]:
+        if song["original_artist"] and song["short_name"] is not None:
             embed = await bot_embed.create_embed(
                 ctx=ctx,
                 title=song["short_name"],

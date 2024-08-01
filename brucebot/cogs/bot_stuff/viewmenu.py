@@ -22,7 +22,6 @@ async def create_dynamic_menu(
         rows_requested=rows,
         all_can_click=True,
         style=page_counter,
-        timeout=None,
         custom_embed=embed,
     )
 

@@ -27,7 +27,7 @@ class MyHelp(commands.HelpCommand):
                 )
 
         embed.set_footer(
-            text=f"{self.context.clean_prefix}bbhelp [category] for more details.",
+            text=f"{self.context.clean_prefix}bhelp [category] for more details.",
         )
 
         channel = self.get_destination()
@@ -85,7 +85,7 @@ class MyHelp(commands.HelpCommand):
 
         embed.set_footer(
             text=(
-                f"{self.context.clean_prefix}bbhelp {group.qualified_name} "
+                f"{self.context.clean_prefix}bhelp {group.qualified_name} "
                 "[subcommand] for more details."
             ),
         )

@@ -1,7 +1,7 @@
 import traceback
 
 import discord
-from cogs.bot_stuff import bot_embed, db
+from cogs.bot_stuff import bot_embed
 from discord.ext import commands
 
 
@@ -76,7 +76,6 @@ class Admin(commands.Cog):
     async def logout(self: "Admin", ctx: commands.Context) -> None:
         """Logout and shutdown bot."""
         await ctx.send("Logging Out")
-        await db.create_pool().close()
         await self.bot.close()
 
 

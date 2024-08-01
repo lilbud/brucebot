@@ -63,8 +63,8 @@ class BruceBot(commands.Bot):
             return
 
         # quick way to enable/disable testing
-        if message.guild.id != self.testing_server:
-            return
+        # if message.guild.id != self.testing_server:
+        #     return
 
         await self.process_commands(message)
 

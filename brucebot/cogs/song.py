@@ -89,19 +89,25 @@ class Song(commands.Cog):
         cur: psycopg.AsyncCursor,
     ) -> discord.Embed:
         """Create the song embed and sending."""
-        embed = await bot_embed.create_embed(
-            ctx=ctx,
-            title=song["song_name"],
-        )
+        if song["original_artist"]:
+            embed = await bot_embed.create_embed(
+                ctx=ctx,
+                title=song["short_name"],
+            )
+        else:
+            embed = await bot_embed.create_embed(
+                ctx=ctx,
+                title=song["song_name"],
+            )
 
         try:
             embed.set_thumbnail(url=release["release_thumb"])
         except TypeError:
             embed.set_thumbnail(
-                url=r"https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
+                url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
             )
 
-        if release is not None:
+        if release:
             embed.add_field(
                 name="Original Release:",
                 value=f"{release['release_name']} ({release['date']})",
@@ -221,7 +227,7 @@ class Song(commands.Cog):
 
                     brucebase_button = discord.ui.Button(
                         style="link",
-                        url=f"http://brucebase.wikidot.com{song['brucebase_url']}",
+                        url=f"http://brucebase.wikidot.com/song:{song['brucebase_url']}",
                         label="Brucebase",
                     )
 

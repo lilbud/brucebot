@@ -130,7 +130,7 @@ class Stats(commands.Cog):
         song: str = "",
     ) -> None:
         """Stats on when a song has closed a set/show."""
-        if song == "":
+        if song == "" or song.lower() == "none":
             await ctx.send_help(ctx.command)
             return
 
@@ -176,6 +176,13 @@ class Stats(commands.Cog):
                         )
 
                         await ctx.send(embed=embed)
+                else:
+                    embed = await bot_embed.not_found_embed(
+                        command="Stats",
+                        message=f"Opener, Song: {song}",
+                    )
+
+                    await ctx.send(embed=embed)
 
     @closer.command(name="song", usage="<song>")
     async def closer_stats(
@@ -185,7 +192,7 @@ class Stats(commands.Cog):
         song: str = "",
     ) -> None:
         """Stats on when a song has closed a set/show."""
-        if song == "":
+        if song == "" or song.lower() == "none":
             await ctx.send_help(ctx.command)
             return
 
@@ -197,7 +204,7 @@ class Stats(commands.Cog):
             ) as cur:
                 songs = await self.song_fuzzy_search(query=song, cur=cur)
 
-                if len(songs) > 0:
+                if songs != []:
                     res = await cur.execute(
                         """SELECT o.* FROM "openers_closers" o LEFT JOIN "setlists" s
                             ON s.position = o.position WHERE o.song_id=%s
@@ -231,6 +238,13 @@ class Stats(commands.Cog):
                         )
 
                         await ctx.send(embed=embed)
+                else:
+                    embed = await bot_embed.not_found_embed(
+                        command="Stats",
+                        message=f"Closer, Song: {song}",
+                    )
+
+                    await ctx.send(embed=embed)
 
     @opener.command(name="tour", usage="<tour>")
     async def opener_tour_stats(

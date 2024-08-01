@@ -41,6 +41,7 @@ class Location(commands.Cog):
 
     @commands.group(
         name="location",
+        aliases=["loc"],
         usage="[subcommand]",
         brief="Commands for finding locations with a Bruce history.",
     )

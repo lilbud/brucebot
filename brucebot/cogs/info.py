@@ -24,7 +24,7 @@ class Info(commands.Cog):
                     count(distinct s.event_id)  || ' setlists' AS setlist_count,
                     count(distinct s1.brucebase_url) || ' songs' AS song_count,
                     count(distinct v.brucebase_url) || ' venues' AS venue_count,
-                    (SELECT count(id) FROM bootlegs) || ' bootlegs(s)' AS bootleg_count
+                    (SELECT count(id) FROM bootlegs) || ' bootlegs' AS bootleg_count
                 FROM
                     events e
                 LEFT JOIN setlists s ON s.event_id = e.event_id
@@ -42,7 +42,15 @@ class Info(commands.Cog):
                 for k, v in counts.items()
             ]
 
-    @commands.command(name="bbinfo")
+    @commands.command(name="status")
+    async def status(
+        self,
+        ctx: commands.Context,
+    ) -> None:
+        """Status message."""
+        await ctx.send("There IS somebody alive out there.")
+
+    @commands.command(name="binfo")
     async def get_info(
         self,
         ctx: commands.Context,
@@ -61,7 +69,7 @@ class Info(commands.Cog):
             info_embed = await bot_embed.create_embed(
                 ctx,
                 title="Brucebot v2.0 Info",
-                description="A Discord bot to get info on Bruce Springsteen's performing history",  # noqa: E501
+                description="A Discord bot to get info on Bruce Springsteen's performing history, created by Lilbud.",  # noqa: E501
                 url="https://github.com/lilbud/brucebot",
             )
 

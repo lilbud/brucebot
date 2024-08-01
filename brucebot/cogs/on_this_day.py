@@ -58,7 +58,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                     LEFT JOIN "events" e1 USING(event_id)
                     WHERE e.event_date::text LIKE %(name)s
                     AND e.event_url NOT LIKE '/nogig:'
-                    ORDER BY e.event_date;
+                    ORDER BY e.event_date, e.event_url;
                     """,  # noqa: E501
                     {"name": f"%{date.strftime("%m-%d")}"},
                 )
@@ -68,7 +68,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                 if len(otd_results) > 0:
                     menu = await viewmenu.create_dynamic_menu(
                         ctx=ctx,
-                        page_counter="Event $ of &",
+                        page_counter="Event $/&\nEvents with # are placeholder dates",
                         rows=6,
                         title=date.strftime("%B %d"),
                     )

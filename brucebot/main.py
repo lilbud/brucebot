@@ -88,7 +88,7 @@ if sys.platform == "win32":
 
 bot = BruceBot(prefix="!", ext_dir=Path(Path(__file__).parent, "cogs"))
 
-attributes = {"name": "bbhelp"}
+attributes = {"name": "bhelp"}
 
 bot.help_command = MyHelp(command_attrs=attributes)
 asyncio.run(bot.run_bot())

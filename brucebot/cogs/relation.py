@@ -38,6 +38,7 @@ class Relation(commands.Cog):
                 r.brucebase_url,
                 r.relation_name,
                 r.appearances,
+                r.aliases,
                 e.event_date AS first_date,
                 e.brucebase_url AS first_url,
                 e1.event_date AS last_date,
@@ -60,6 +61,7 @@ class Relation(commands.Cog):
         embed = await bot_embed.create_embed(
             ctx=ctx,
             title=relation["relation_name"],
+            description=f"**Nicknames:** {relation["aliases"]}",
             url=f"http://brucebase.wikidot.com/relation:{relation["brucebase_url"]}",
         )
 
@@ -85,7 +87,10 @@ class Relation(commands.Cog):
         *,
         argument: str = "",
     ) -> None:
-        """Find relation based on input."""
+        """Find relation based on input.
+
+        Can search by name or nickname (Big Man, Phantom, etc.)
+        """
         if argument == "":
             await ctx.send_help(ctx.command)
             return

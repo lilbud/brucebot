@@ -75,10 +75,9 @@ class Admin(commands.Cog):
     @commands.is_owner()
     async def logout(self: "Admin", ctx: commands.Context) -> None:
         """Logout and shutdown bot."""
-        async with await db.create_pool() as pool:
-            await ctx.send("Logging Out")
-            await pool.close()
-            await self.bot.close()
+        await ctx.send("Logging Out")
+        await db.create_pool().close()
+        await self.bot.close()
 
 
 async def setup(bot: commands.Bot) -> None:

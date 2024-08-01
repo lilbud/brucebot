@@ -47,6 +47,7 @@ class BruceBot(commands.Bot):
     async def close(self) -> None:
         """Close bot on keyboard interrupt."""
         await super().close()
+        await self.pool.close()
 
     async def setup_hook(self) -> None:
         """Load cogs from directory."""

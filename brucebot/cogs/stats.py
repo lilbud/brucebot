@@ -74,9 +74,10 @@ class Stats(commands.Cog):
             LEFT JOIN "songs" s1 ON s1.brucebase_url = s.song_id
             WHERE s.position = %(position)s
             AND e.tour = %(tour_id)s
+            AND s.set_name = ANY(ARRAY['Show'::text,'Set 1'::text,'Set 2'::text,'Encore'::text])
             GROUP BY s1.song_name, s.position
             ORDER BY count(*) DESC
-            """,
+            """,  # noqa: E501
             {"position": position, "tour_id": tour_id},
         )
 

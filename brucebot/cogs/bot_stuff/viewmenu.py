@@ -23,6 +23,7 @@ async def create_dynamic_menu(
         all_can_click=True,
         style=page_counter,
         custom_embed=embed,
+        timeout=None,
     )
 
     back_button = ViewButton(

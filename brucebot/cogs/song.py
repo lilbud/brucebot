@@ -169,8 +169,9 @@ class Song(commands.Cog):
                 plainto_tsquery('english', %(query)s) query,
                 ts_rank(fts, query) rank,
                 SIMILARITY(%(query)s, coalesce(aliases, short_name, song_name)) similarity
-            WHERE query @@ fts AND similarity >= 0.45
-            ORDER BY similarity DESC, rank DESC;
+            WHERE query @@ fts
+            -- AND similarity >= 0.45
+            ORDER BY rank DESC, similarity DESC;
             """,  # noqa: E501
             {"query": query},
         )

@@ -170,7 +170,7 @@ class Song(commands.Cog):
                 ts_rank(fts, query) rank,
                 SIMILARITY(%(query)s, coalesce(aliases, short_name, song_name)) similarity
             WHERE query @@ fts
-            -- AND similarity >= 0.45
+            AND similarity >= 0.0415
             ORDER BY rank DESC, similarity DESC;
             """,  # noqa: E501
             {"query": query},

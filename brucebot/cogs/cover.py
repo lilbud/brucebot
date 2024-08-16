@@ -26,6 +26,8 @@ class Cover(commands.Cog):
                 title=f"Covers for {date}",
             )
 
+            embed.add_field(name="Source:", value=file["source"], inline=False)
+
             embed.set_image(
                 url=file["cover_url"],
             )
@@ -66,11 +68,25 @@ class Cover(commands.Cog):
                     return
 
                 res = await cur.execute(
-                    """SELECT cover_url FROM "covers" WHERE event_date=%(date)s""",
+                    """SELECT cover_url, 'lilbud' AS source FROM "covers"
+                    WHERE event_date=%(date)s""",
                     {"date": date.strftime("%Y-%m-%d")},
                 )
 
                 files = await res.fetchall()
+
+                if len(files) == 0:
+                    res = await cur.execute(
+                        """SELECT
+                            n.thumbnail_url AS cover_url,
+                            'Nugs' AS source
+                        FROM nugs_releases n
+                        LEFT JOIN events e ON e.event_id = n.event_id
+                        WHERE e.event_date = %(date)s""",
+                        {"date": date.strftime("%Y-%m-%d")},
+                    )
+
+                    files = await res.fetchall()
 
         # ViewMenu is only for multiple covers,
         # single embed is just default embed + image.
@@ -80,6 +96,8 @@ class Cover(commands.Cog):
                 ctx,
                 title=f"Cover for {date}",
             )
+
+            embed.add_field(name="Source:", value=files[0]["source"], inline=False)
 
             embed.set_image(
                 url=cover,

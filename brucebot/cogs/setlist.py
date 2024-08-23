@@ -40,15 +40,18 @@ class Setlist(commands.Cog):
         """Get notes for an event and return."""
         res = await cur.execute(
             """SELECT DISTINCT
-                    '[' || row_number() OVER (PARTITION BY event_id) || '] ' || note AS formatted_note
+                    '[' || num || '] ' || note AS formatted_note
                 FROM
                     "setlist_notes"
                 WHERE
-                    event_id = %(event)s""",  # noqa: E501
+                    event_id = %(event)s
+                 """,
             {"event": event_id},
         )
 
         event_notes = await res.fetchall()
+
+        print(event_notes)
 
         return [row["formatted_note"] for row in event_notes]
 

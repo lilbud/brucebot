@@ -55,7 +55,13 @@ async def create_view_menu(
     """
     embed = discord.Embed(title=title, description="", color=discord.Color.random())
 
-    menu = ViewMenu(ctx, menu_type=ViewMenu.TypeEmbed, style=style, custom_embed=embed)
+    menu = ViewMenu(
+        ctx,
+        menu_type=ViewMenu.TypeEmbed,
+        style=style,
+        custom_embed=embed,
+        timeout=None,
+    )
 
     # ViewButton.ID_PREVIOUS_PAGE
     back_button = ViewButton(

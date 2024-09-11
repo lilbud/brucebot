@@ -1,6 +1,7 @@
 # CHANGELOG
 ### This changelog was part of the README, but its now moved to its own file.
 
+- 2024-07-30 - Initial commit, almost all features from Brucebot 1.0 moved over. Complete rewrite of bot from scratch, largely due to a rewrite of the Databruce project.
 - 2024-08-04 - fixed none short_name breaking song embed
 - 2024-08-04 - fixed tour not showing up
 - 2024-08-04 - fixed incorrect footer on help command (showing bbhelp instead of bhelp)

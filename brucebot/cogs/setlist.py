@@ -39,13 +39,16 @@ class Setlist(commands.Cog):
     ) -> list[str]:
         """Get notes for an event and return."""
         res = await cur.execute(
-            """SELECT DISTINCT
-                    '[' || row_number() OVER (ORDER BY num) || '] ' || note AS formatted_note
+            """
+                SELECT DISTINCT
+                    num::int,
+                    '[' || num || '] ' || note AS formatted_note
                 FROM
                     "setlist_notes"
                 WHERE
                     event_id = %(event)s
-                 """,
+                ORDER BY num::int
+            """,
             {"event": event_id},
         )
 

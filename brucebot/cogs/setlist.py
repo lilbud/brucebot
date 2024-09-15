@@ -40,7 +40,7 @@ class Setlist(commands.Cog):
         """Get notes for an event and return."""
         res = await cur.execute(
             """SELECT DISTINCT
-                    '[' || num || '] ' || note AS formatted_note
+                    '[' || row_number() OVER (ORDER BY num) || '] ' || note AS formatted_note
                 FROM
                     "setlist_notes"
                 WHERE

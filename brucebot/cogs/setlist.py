@@ -72,6 +72,7 @@ class Setlist(commands.Cog):
                     FROM "events_with_info" e
                     WHERE e.event_date = %(date)s
                     AND e.event_date <= current_date
+                    ORDER BY e.event_id
                     """,
                 {"date": date},
             )

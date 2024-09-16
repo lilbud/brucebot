@@ -213,6 +213,8 @@ class Song(commands.Cog):
                         cur=cur,
                     )
 
+                    print(song_info)
+
                     embed = await self.song_embed(
                         song=song_info,
                         release=release,

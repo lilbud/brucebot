@@ -1,6 +1,6 @@
 import discord
 import psycopg
-from cogs.bot_stuff import bot_embed, db, utils
+from cogs.bot_stuff import bot_embed, db, utils, viewmenu
 from discord.ext import commands
 from psycopg.rows import dict_row
 
@@ -12,6 +12,51 @@ class Song(commands.Cog):
         """Init Song cog with bot."""
         self.bot = bot
         self.description = "Find songs that Bruce has played live."
+
+    async def get_count_by_year(self, song_id: str, cur: psycopg.AsyncCursor) -> dict:
+        """Use given url to count how many times a song has appeared by year."""
+        res = await cur.execute(
+            """
+            SELECT
+                to_char(e.event_date, 'YYYY') AS year,
+                COUNT(s.song_id) AS count
+            from setlists s
+            LEFT JOIN events e ON e.event_id = s.event_id
+            WHERE s.song_id = %(song)s
+            AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
+            GROUP BY to_char(e.event_date, 'YYYY')
+            ORDER BY to_char(e.event_date, 'YYYY')
+            """,
+            {"song": song_id},
+        )
+
+        return await res.fetchall()
+
+    async def get_count_by_tour(self, song_id: str, cur: psycopg.AsyncCursor) -> dict:
+        """Use given url to count how many times a song has appeared by year."""
+        res = await cur.execute(
+            """
+            SELECT
+                CASE
+                    WHEN t.start_year = t.end_year THEN t.start_year::text
+                    ELSE t.start_year || '-' || t.end_year
+                END as years,
+                t.tour_name AS tour,
+                count(*)
+            FROM setlists s
+            LEFT JOIN event_details e ON e.event_id = s.event_id
+            LEFT JOIN tours t ON t.brucebase_id = e.tour
+            WHERE
+                s.song_id = %(song)s
+                AND t.brucebase_id <> ALL (ARRAY['tour_no', 'tour_ivw'])
+                AND s.set_name = ANY (ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
+            GROUP BY t.tour_name, t.start_year, t.end_year
+            ORDER BY t.start_year ASC
+            """,
+            {"song": song_id},
+        )
+
+        return await res.fetchall()
 
     async def get_song_info(self, url: str, cur: psycopg.AsyncCursor) -> dict:
         """With provided URL from fts, get info on song."""
@@ -177,6 +222,106 @@ class Song(commands.Cog):
         )
 
         return await res.fetchone()
+
+    @commands.command(name="songyear", aliases=["sy"], usage="<song>")
+    async def song_year_count(
+        self,
+        ctx: commands.Context,
+        *,
+        argument: str = "",
+    ) -> None:
+        """Search database by song and get year counts."""
+        if argument == "":
+            await ctx.send_help(ctx.command)
+            return
+
+        async with await db.create_pool() as pool:
+            await ctx.typing()
+
+            async with pool.connection() as conn, conn.cursor(
+                row_factory=dict_row,
+            ) as cur:
+                song = await self.song_find_fuzzy(argument, cur)
+
+                if song:
+                    song_info = await self.get_song_info(
+                        url=song["brucebase_url"],
+                        cur=cur,
+                    )
+
+                    year_stats = await self.get_count_by_year(
+                        song["brucebase_url"],
+                        cur,
+                    )
+
+                    menu = await viewmenu.create_dynamic_menu(
+                        ctx=ctx,
+                        page_counter="Page $/&",
+                        rows=12,
+                        title=f"Year Count For: {song_info['song_name']}",
+                    )
+
+                    for index, row in enumerate(year_stats, start=1):
+                        menu.add_row(f"{index}. **{row['year']}**: _{row['count']}_")
+
+                    await menu.start()
+                else:
+                    embed = await bot_embed.not_found_embed(
+                        command=self.__class__.__name__,
+                        message=argument,
+                    )
+                    await ctx.send(embed=embed)
+
+    @commands.command(name="songtour", aliases=["st"], usage="<song>")
+    async def song_tour_count(
+        self,
+        ctx: commands.Context,
+        *,
+        argument: str = "",
+    ) -> None:
+        """Search database by song and get tour counts."""
+        if argument == "":
+            await ctx.send_help(ctx.command)
+            return
+
+        async with await db.create_pool() as pool:
+            await ctx.typing()
+
+            async with pool.connection() as conn, conn.cursor(
+                row_factory=dict_row,
+            ) as cur:
+                song = await self.song_find_fuzzy(argument, cur)
+
+                if song:
+                    song_info = await self.get_song_info(
+                        url=song["brucebase_url"],
+                        cur=cur,
+                    )
+
+                    tour_stats = await self.get_count_by_tour(
+                        song["brucebase_url"],
+                        cur,
+                    )
+
+                    menu = await viewmenu.create_dynamic_menu(
+                        ctx=ctx,
+                        page_counter="Page $/&",
+                        rows=12,
+                        title=f"Tour Count For: {song_info['song_name']}",
+                    )
+
+                    for index, row in enumerate(tour_stats, start=1):
+                        menu.add_row(
+                            f"{index}. _{row['years']}_: **{row['tour']}** - _{row['count']} time(s)_",  # noqa: E501
+                        )
+
+                    await menu.start()
+                else:
+                    embed = await bot_embed.not_found_embed(
+                        command=self.__class__.__name__,
+                        message=argument,
+                    )
+                    await ctx.send(embed=embed)
 
     @commands.command(name="song", aliases=["s"], usage="<song>")
     async def song_find(

@@ -108,7 +108,7 @@ class Location(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command="city",
-                    message=city,
+                    message=argument,
                 )
                 await ctx.send(embed=embed)
 
@@ -173,7 +173,7 @@ class Location(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command="state",
-                    message=state,
+                    message=argument,
                 )
                 await ctx.send(embed=embed)
 
@@ -236,7 +236,7 @@ class Location(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command="country",
-                    message=country,
+                    message=argument,
                 )
                 await ctx.send(embed=embed)
 

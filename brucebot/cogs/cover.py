@@ -36,32 +36,28 @@ class Cover(commands.Cog):
 
         await menu.start()
 
-    @commands.command(name="cover", usage="<date>")
+    @commands.hybrid_command(name="cover", usage="<date>")
     async def get_covers(
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        date_query: str,
     ) -> list:
         """Get list of covers from my repo based on date."""
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
             async with pool.connection() as conn, conn.cursor(
                 row_factory=dict_row,
             ) as cur:
-                date = await utils.date_parsing(argument)
+                date = await utils.date_parsing(date_query)
 
                 try:
                     date.strftime("%Y-%m-%d")
                 except AttributeError:
                     embed = await bot_embed.not_found_embed(
                         command=self.__class__.__name__,
-                        message=argument,
+                        message=date_query,
                     )
                     await ctx.send(embed=embed)
 
@@ -110,7 +106,7 @@ class Cover(commands.Cog):
         else:
             embed = await bot_embed.not_found_embed(
                 command=self.__class__.__name__,
-                message=argument,
+                message=date_query,
             )
             await ctx.send(embed=embed)
 

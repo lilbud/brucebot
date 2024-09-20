@@ -24,13 +24,16 @@ class Error(commands.Cog):
             color=discord.Color.red(),
         )
 
-        print(
-            "".join(
-                traceback.format_exception(type(error), error, error.__traceback__),
-            ),
-        )
+        if isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send_help(ctx.command)
+        else:
+            print(
+                "".join(
+                    traceback.format_exception(type(error), error, error.__traceback__),
+                ),
+            )
 
-        await ctx.send(embed=embed)
+            await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

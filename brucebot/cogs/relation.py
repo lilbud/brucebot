@@ -85,16 +85,12 @@ class Relation(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        relation_query: str,
     ) -> None:
         """Find relation based on input.
 
         Can search by name or nickname (Big Man, Phantom, etc.)
         """
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
@@ -117,7 +113,7 @@ class Relation(commands.Cog):
                     WHERE query @@ fts
                     ORDER BY appearances DESC, rank DESC, similarity DESC NULLS LAST
                     """,
-                    {"query": argument},
+                    {"query": relation_query},
                 )
 
                 relation = await res.fetchone()
@@ -134,7 +130,7 @@ class Relation(commands.Cog):
                 else:
                     embed = await bot_embed.not_found_embed(
                         command=self.__class__.__name__,
-                        message=argument,
+                        message=relation_query,
                     )
                     await ctx.send(embed=embed)
 

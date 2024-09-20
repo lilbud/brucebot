@@ -20,7 +20,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        date_query: str,
     ) -> None:
         """Find events on a given day, or current day if empty."""
         async with await db.create_pool() as pool:
@@ -29,10 +29,10 @@ class OnThisDay(commands.Cog, name="On This Day"):
             async with pool.connection() as conn, conn.cursor(
                 row_factory=dict_row,
             ) as cur:
-                if argument == "":
+                if date_query == "":
                     date = current_date
                 else:
-                    date = await utils.date_parsing(argument)
+                    date = await utils.date_parsing(date_query)
 
                 try:
                     date.strftime("%m-%d")
@@ -85,7 +85,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                 else:
                     embed = await bot_embed.not_found_embed(
                         command="events",
-                        message=date,
+                        message=date_query,
                     )
                     await ctx.send(embed=embed)
 

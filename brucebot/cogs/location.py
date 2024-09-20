@@ -59,16 +59,12 @@ class Location(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        city_query: str,
     ) -> None:
         """Search for a city with a Bruce history.
 
         Cities can be found by either name or nickname/alias (NYC/Philly/etc.)
         """
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
@@ -98,7 +94,7 @@ class Location(commands.Cog):
                     WHERE query @@ fts
                     ORDER BY rank, similarity DESC NULLS LAST
                     """,
-                    {"query": argument},
+                    {"query": city_query},
                 )
 
                 city = await res.fetchone()
@@ -108,7 +104,7 @@ class Location(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command="city",
-                    message=argument,
+                    message=city_query,
                 )
                 await ctx.send(embed=embed)
 
@@ -121,16 +117,12 @@ class Location(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        state_query: str,
     ) -> None:
         """Search for a state with a Bruce history.
 
         States can be found by either name or abbreviation.
         """
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
@@ -163,7 +155,7 @@ class Location(commands.Cog):
                     WHERE query @@ fts
                     ORDER BY rank, similarity DESC NULLS LAST
                     """,
-                    {"query": argument},
+                    {"query": state_query},
                 )
 
                 state = await res.fetchone()
@@ -173,7 +165,7 @@ class Location(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command="state",
-                    message=argument,
+                    message=state_query,
                 )
                 await ctx.send(embed=embed)
 
@@ -186,16 +178,12 @@ class Location(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        country_query: str,
     ) -> None:
         """Search for a country with a Bruce history.
 
         Countries can be found by either name or abbreviation.
         """
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
@@ -226,7 +214,7 @@ class Location(commands.Cog):
                     WHERE query @@ fts
                     ORDER BY rank, similarity DESC NULLS LAST
                     """,
-                    {"query": argument},
+                    {"query": country_query},
                 )
 
                 country = await res.fetchone()
@@ -236,7 +224,7 @@ class Location(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command="country",
-                    message=argument,
+                    message=country_query,
                 )
                 await ctx.send(embed=embed)
 

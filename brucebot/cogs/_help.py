@@ -33,7 +33,7 @@ class MyHelp(commands.HelpCommand):
         channel = self.get_destination()
         await channel.send(embed=embed)
 
-    async def send_command_help(self, command: commands.Command) -> None:
+    async def send_command_help(self, command: commands.Command) -> discord.Embed:
         """Help with specific commands."""
         embed = discord.Embed(
             title=self.get_command_signature(command),

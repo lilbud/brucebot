@@ -277,20 +277,16 @@ class Song(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        song_query: str,
     ) -> None:
         """Search database by song and get tour counts."""
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
             async with pool.connection() as conn, conn.cursor(
                 row_factory=dict_row,
             ) as cur:
-                song = await self.song_find_fuzzy(argument, cur)
+                song = await self.song_find_fuzzy(song_query, cur)
 
                 if song:
                     song_info = await self.get_song_info(
@@ -319,7 +315,7 @@ class Song(commands.Cog):
                 else:
                     embed = await bot_embed.not_found_embed(
                         command=self.__class__.__name__,
-                        message=argument,
+                        message=song_query,
                     )
                     await ctx.send(embed=embed)
 
@@ -328,14 +324,10 @@ class Song(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        song_query: str,
     ) -> None:
         """Search database for song."""
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
-        argument = await utils.clean_message(argument)
+        song_query = await utils.clean_message(song_query)
 
         async with await db.create_pool() as pool:
             await ctx.typing()
@@ -343,7 +335,7 @@ class Song(commands.Cog):
             async with pool.connection() as conn, conn.cursor(
                 row_factory=dict_row,
             ) as cur:
-                song = await self.song_find_fuzzy(argument, cur)
+                song = await self.song_find_fuzzy(song_query, cur)
 
                 if song:
                     view = discord.ui.View()
@@ -380,7 +372,7 @@ class Song(commands.Cog):
                 else:
                     embed = await bot_embed.not_found_embed(
                         command=self.__class__.__name__,
-                        message=argument,
+                        message=song_query,
                     )
                     await ctx.send(embed=embed)
 

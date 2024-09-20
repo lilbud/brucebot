@@ -69,25 +69,21 @@ class Bootleg(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        date_query: str,
     ) -> None:
         """Search database for bootlegs by date.
 
         Date can be in any valid format, although YYYY-MM-DD is recommended.
         """
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
-            date = await utils.date_parsing(argument)
+            date = await utils.date_parsing(date_query)
 
             try:
                 date.strftime("%Y-%m-%d")
             except AttributeError:
                 embed = await bot_embed.not_found_embed(
                     command=self.__class__.__name__,
-                    message=argument,
+                    message=date_query,
                 )
                 await ctx.send(embed=embed)
                 return
@@ -131,7 +127,7 @@ class Bootleg(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command=self.__class__.__name__,
-                    message=argument,
+                    message=date_query,
                 )
                 await ctx.send(embed=embed)
 

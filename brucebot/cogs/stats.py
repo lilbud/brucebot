@@ -128,13 +128,9 @@ class Stats(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        song: str = "",
+        song: str,
     ) -> None:
         """Stats on when a song has closed a set/show."""
-        if song == "" or song.lower() == "none":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
@@ -190,13 +186,9 @@ class Stats(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        song: str = "",
+        song: str,
     ) -> None:
         """Stats on when a song has closed a set/show."""
-        if song == "" or song.lower() == "none":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
@@ -252,21 +244,16 @@ class Stats(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        tour_query: str,
     ) -> None:
         """Get list of show openers for given tour."""
-        print(argument)
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
             async with pool.connection() as conn, conn.cursor(
                 row_factory=dict_row,
             ) as cur:
-                tour = await self.find_tour(cur, argument)
+                tour = await self.find_tour(cur, tour_query)
 
                 print(tour)
 
@@ -289,7 +276,7 @@ class Stats(commands.Cog):
                 else:
                     embed = await bot_embed.not_found_embed(
                         command="Stats",
-                        message=f"Opener, Tour: {argument}",
+                        message=f"Opener, Tour: {tour_query}",
                     )
 
                     await ctx.send(embed=embed)
@@ -299,20 +286,16 @@ class Stats(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        tour: str,
+        tour_query: str,
     ) -> None:
         """Get list of closers by tour."""
-        if tour == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
             async with pool.connection() as conn, conn.cursor(
                 row_factory=dict_row,
             ) as cur:
-                tour = await self.find_tour(cur, tour)
+                tour = await self.find_tour(cur, tour_query)
 
                 if tour:
                     stats = await self.get_tour_stats(
@@ -333,7 +316,7 @@ class Stats(commands.Cog):
                 else:
                     embed = await bot_embed.not_found_embed(
                         command="Stats",
-                        message=f"Closer, Tour: {tour}",
+                        message=f"Closer, Tour: {tour_query}",
                     )
 
                     await ctx.send(embed=embed)
@@ -343,13 +326,9 @@ class Stats(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        year: str = "",
+        year: str,
     ) -> None:
         """Get list of show openers for given year."""
-        if year == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 
@@ -401,10 +380,6 @@ class Stats(commands.Cog):
         year: str,
     ) -> None:
         """Get list of closers by year."""
-        if year == "":
-            await ctx.send_help(ctx.command)
-            return
-
         async with await db.create_pool() as pool:
             await ctx.typing()
 

@@ -178,7 +178,12 @@ class Setlist(commands.Cog):
         archive = await self.get_archive_links(event_id=event["event_id"], pool=pool)
 
         if nugs_release:
-            releases.append(f"[Nugs]({nugs_release['url']})")
+            if "nugs" in nugs_release["url"]:
+                source = "Nugs"
+            elif "livephish" in nugs_release["url"]:
+                source = "LivePhish"
+
+            releases.append(f"[{source}]({nugs_release['url']})")
 
         if archive:
             releases.append(f"[Archive.org]({archive['url']})")
@@ -252,7 +257,7 @@ class Setlist(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        date_query: str = "",
     ) -> None:
         """Fetch setlists for a given date.
 
@@ -261,13 +266,13 @@ class Setlist(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            if argument == "":
-                argument = await self.get_latest_setlist(pool=pool)
+            if date_query == "":
+                date_query = await self.get_latest_setlist(pool=pool)
 
-            if "http://brucebase.wikidot.com" in argument:
-                events = await self.parse_brucebase_url(argument, pool)
+            if "http://brucebase.wikidot.com" in date_query:
+                events = await self.parse_brucebase_url(date_query, pool)
             else:
-                date = await utils.date_parsing(argument)
+                date = await utils.date_parsing(date_query)
 
                 print(date)
 
@@ -309,7 +314,7 @@ class Setlist(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command=self.__class__.__name__,
-                    message=argument,
+                    message=date_query,
                 )
                 await ctx.send(embed=embed)
 

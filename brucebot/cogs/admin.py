@@ -4,16 +4,18 @@ import discord
 from cogs.bot_stuff import bot_embed
 from discord.ext import commands
 
+MY_GUILD = discord.Object(id=735698850802565171)  # replace with your guild id
+
 
 class Admin(commands.Cog):
     """Admin-only commands that make the bot dynamic."""
 
-    def __init__(self: "Admin", bot: commands.Bot) -> None:
+    def __init__(self, bot: commands.Bot) -> None:
         """Initialize Command."""
         self.bot = bot
 
     async def cog_command_error(
-        self: "Admin",
+        self,
         ctx: commands.Context,
         error: Exception,
     ) -> None:
@@ -73,10 +75,28 @@ class Admin(commands.Cog):
     # so it acts like a reboot instead
     @commands.command(hidden=True)
     @commands.is_owner()
-    async def logout(self: "Admin", ctx: commands.Context) -> None:
+    async def logout(self, ctx: commands.Context) -> None:
         """Logout and shutdown bot."""
         await ctx.send("Logging Out")
         await self.bot.close()
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def clear(self, ctx: commands.Context) -> None:
+        """Clear commands."""
+        self.bot.tree.clear_commands(guild=None)
+        await ctx.bot.tree.sync(guild=None)
+
+        await ctx.send("Cleared Commands")
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def sync(self, ctx: commands.Context) -> None:
+        """Sync commands."""
+        self.bot.tree.copy_global_to(guild=ctx.guild)
+
+        synced = await ctx.bot.tree.sync(guild=MY_GUILD)
+        await ctx.send(f"Synced {len(synced)} commands globally")
 
 
 async def setup(bot: commands.Bot) -> None:

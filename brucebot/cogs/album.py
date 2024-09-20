@@ -94,17 +94,13 @@ class Album(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        argument: str = "",
+        album_query: str,
     ) -> None:
         """Search database for album.
 
         Album can be found by name or alias.
         """
         async with await db.create_pool() as pool:
-            if argument == "":
-                await ctx.send_help(ctx.command)
-                return
-
             await ctx.typing()
 
             async with pool.connection() as conn, conn.cursor(
@@ -128,7 +124,7 @@ class Album(commands.Cog):
                     WHERE query @@ fts
                     ORDER BY similarity DESC, rank DESC;
                     """,  # noqa: E501
-                    {"query": argument},
+                    {"query": album_query},
                 )
 
                 album = await res.fetchone()
@@ -161,7 +157,7 @@ class Album(commands.Cog):
                 else:
                     embed = await bot_embed.not_found_embed(
                         command=self.__class__.__name__,
-                        message=argument,
+                        message=album_query,
                     )
                     await ctx.send(embed=embed)
 

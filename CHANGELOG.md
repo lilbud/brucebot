@@ -13,3 +13,4 @@
 - 2024-08-21 - fix song search. Had issue with the search ranking, so "Into The Fire" was actually pulling up the first result which was Hendrix's Fire. Switched Rank and Similarity in the ORDER BY, seems to have fixed it.
 - 2024-09-08 - remove timeout on covers embed viewmenu
 - 2024-09-23 - added venue search command `!venue` or `!v`
+- 2024-09-23 - changed song FTS to 'simple', as for unknown reasons the generated vector column was ignoring the song name on some rows.

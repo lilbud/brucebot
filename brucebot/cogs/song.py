@@ -211,7 +211,7 @@ class Song(commands.Cog):
                 similarity
             FROM
                 "songs" s,
-                plainto_tsquery('english', %(query)s) query,
+                plainto_tsquery('simple', %(query)s) query,
                 ts_rank(fts, query) rank,
                 SIMILARITY(%(query)s, coalesce(aliases, short_name, song_name)) similarity
             WHERE query @@ fts

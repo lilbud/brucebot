@@ -1,4 +1,3 @@
-import argparse
 import asyncio
 import logging
 import os
@@ -50,25 +49,12 @@ class BruceBot(commands.Bot):
         await super().close()
         await self.pool.close()
 
-    async def get_arguments(self) -> None:
-        """Get command line arguments."""
-        parser = argparse.ArgumentParser(
-            prog="Brucebot",
-            description="Discord Bot",
-            epilog="Bottom Text",
-        )
-
-        parser.add_argument("-db", choices=["local", "heroku"], default="heroku")
-        args = parser.parse_args()
-        return args.db
-
     async def setup_hook(self) -> None:
         """Load cogs from directory."""
         await self.load_extensions()
-        database = await self.get_arguments()
 
         # opening connection pool to database
-        self.pool = await db.create_pool(database)
+        self.pool = await db.create_pool()
         await self.pool.open()
 
     async def on_message(self, message: discord.Message) -> None:

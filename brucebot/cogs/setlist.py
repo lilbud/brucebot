@@ -41,13 +41,17 @@ class Setlist(commands.Cog):
         res = await cur.execute(
             """
                 SELECT DISTINCT
-                    num::int,
-                    '[' || num || '] ' || note AS formatted_note
+                    s.num,
+                    s.note || CASE
+                        WHEN s.note = ANY (ARRAY['Tour Debut', 'Bustout'])
+                        THEN ', LTP: ' || e.event_date || ' (' || s.gap || ' shows)'
+                        ELSE ''
+                    END as note
                 FROM
-                    "setlist_notes"
-                WHERE
-                    event_id = %(event)s
-                ORDER BY num::int
+                setlist_notes s
+                LEFT JOIN events e ON e.event_id = s.last
+                WHERE s.event_id = %(event)s
+                ORDER BY num
             """,
             {"event": event_id},
         )
@@ -56,7 +60,7 @@ class Setlist(commands.Cog):
 
         print(event_notes)
 
-        return [row["formatted_note"] for row in event_notes]
+        return [f"[{row["num"]}] {row["note"]}" for row in event_notes]
 
     async def get_events_by_exact_date(
         self,

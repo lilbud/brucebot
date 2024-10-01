@@ -14,3 +14,4 @@
 - 2024-09-08 - remove timeout on covers embed viewmenu
 - 2024-09-23 - added venue search command `!venue` or `!v`
 - 2024-09-23 - changed song FTS to 'simple', as for unknown reasons the generated vector column was ignoring the song name on some rows.
+- 2024-10-01 - added command line argument to specify the database to connect to. When running locally I use the local database, and when deployed it should use Heroku instead.

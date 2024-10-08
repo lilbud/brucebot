@@ -1,4 +1,5 @@
 import discord
+import ftfy
 import psycopg
 from cogs.bot_stuff import bot_embed, db, utils, viewmenu
 from discord.ext import commands
@@ -98,7 +99,7 @@ class Song(commands.Cog):
         """Get info on the first release of a given song."""
         res = await cur.execute(
             """SELECT * FROM "songs_first_release"
-                WHERE song_id=%s ORDER BY date::date ASC;""",
+                WHERE song_id=%s ORDER BY release_date::date ASC;""",
             (song,),
         )
 
@@ -149,7 +150,7 @@ class Song(commands.Cog):
         if release:
             embed.add_field(
                 name="Original Release:",
-                value=f"{release['release_name']} ({release['date']})",
+                value=f"{release['release_name']} _({release['release_date']})_",
                 inline=False,
             )
 
@@ -218,7 +219,7 @@ class Song(commands.Cog):
             AND similarity >= 0.0415
             ORDER BY similarity DESC, rank DESC;
             """,  # noqa: E501
-            {"query": query},
+            {"query": ftfy.fix_text(query)},
         )
 
         return await res.fetchone()

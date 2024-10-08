@@ -1,3 +1,4 @@
+import ftfy
 from cogs.bot_stuff import bot_embed, db
 from discord.ext import commands
 from psycopg.rows import dict_row
@@ -65,6 +66,8 @@ class Location(commands.Cog):
 
         Cities can be found by either name or nickname/alias (NYC/Philly/etc.)
         """
+        city_query = ftfy.fix_text(city_query)
+
         async with await db.create_pool() as pool:
             await ctx.typing()
 
@@ -73,26 +76,27 @@ class Location(commands.Cog):
             ) as cur:
                 res = await cur.execute(
                     """
-                    SELECT
-                        "cities".*,
-                        (SELECT CONCAT('[', event_date, ']') ||
-                            CONCAT('(', event_url, ')')
-                            FROM "events_with_info" WHERE city="cities"."name"
-                            AND event_date::date < current_date
-                            ORDER BY event_date LIMIT 1) AS first_event,
-                        (SELECT CONCAT('[', event_date, ']') ||
-                            CONCAT('(', event_url, ')')
-                            FROM "events_with_info" WHERE city="cities"."name"
-                            AND event_date::date < current_date
-                            ORDER BY event_date DESC LIMIT 1) AS last_event
-                    FROM
-                        "cities",
-                        plainto_tsquery('english', %(query)s) query,
-                        ts_rank(fts, query) rank,
-                        SIMILARITY(%(query)s,
-                            coalesce(aliases, unaccent(name), '')) similarity
-                    WHERE query @@ fts
-                    ORDER BY rank, similarity DESC NULLS LAST
+                        SELECT
+                            id,
+                            name,
+                            state_abbrev,
+                            state_name,
+                            aliases,
+                            num_events,
+                            '[' || first_date || '](http://brucebase.wikidot.com' ||
+                                first_url || ')' AS first_event,
+                            '[' || last_date || '](http://brucebase.wikidot.com' ||
+                                last_url || ')' AS last_event
+                        FROM
+                            city_search,
+                            plainto_tsquery('english', %(query)s) query,
+                            to_tsvector('english', name || ' ' || state_abbrev || ' ' ||
+                                state_name || ' ' || coalesce(aliases, '')) fts,
+                            ts_rank(fts, query) rank,
+                            similarity(name || ' ' || state_abbrev || ' ' || state_name
+                                || ' ' || coalesce(aliases, ''), %(query)s) similarity
+                        WHERE query @@ fts
+                        ORDER BY similarity DESC, rank DESC NULLS LAST;
                     """,
                     {"query": city_query},
                 )
@@ -131,29 +135,23 @@ class Location(commands.Cog):
             ) as cur:
                 res = await cur.execute(
                     """
-                    SELECT
-                        "states"."state_abbrev",
-                        "states"."state_name" AS name,
-                        "states"."state_country" AS country,
-                        "states"."num_events",
-                        (SELECT CONCAT('[', event_date, ']') ||
-                            CONCAT('(', event_url, ')')
-                            FROM "events_with_info" WHERE state="states"."state_abbrev"
-                            AND event_date::date < current_date
-                            ORDER BY event_date LIMIT 1) AS first_event,
-                        (SELECT CONCAT('[', event_date, ']') ||
-                            CONCAT('(', event_url, ')')
-                            FROM "events_with_info" WHERE state="states"."state_abbrev"
-                            AND event_date::date < current_date
-                            ORDER BY event_date DESC LIMIT 1) AS last_event
-                    FROM
-                        "states",
-                        plainto_tsquery('english', %(query)s) query,
-                        ts_rank(fts, query) rank,
-                        SIMILARITY(%(query)s,
-                            state_name || ' ' || state_abbrev) similarity
-                    WHERE query @@ fts
-                    ORDER BY rank, similarity DESC NULLS LAST
+                        SELECT
+                            state_name || ', ' || country AS name,
+                            num_events,
+                            '[' || first_date || '](http://brucebase.wikidot.com' ||
+                                first_url || ')' AS first_event,
+                            '[' || last_date || '](http://brucebase.wikidot.com' ||
+                                last_url || ')' AS last_event
+                        FROM
+                            state_search,
+                            plainto_tsquery('english', %(query)s) query,
+                            to_tsvector('english', state_name || ' ' || state_abbrev
+                                || ' ' || country) fts,
+                            ts_rank(fts, query) rank,
+                            similarity(state_name || ' ' || state_abbrev || ' ' ||
+                                country, %(query)s) similarity
+                        WHERE query @@ fts
+                        ORDER BY similarity DESC, rank DESC;
                     """,
                     {"query": state_query},
                 )
@@ -193,26 +191,22 @@ class Location(commands.Cog):
                 res = await cur.execute(
                     """
                     SELECT
-                        "countries".*,
-                        (SELECT CONCAT('[', event_date, ']') ||
-                            CONCAT('(', event_url, ')')
-                            FROM "events_with_info" WHERE country="countries"."name"
-                            AND event_date::date < current_date
-                            ORDER BY event_date LIMIT 1) AS first_event,
-                        (SELECT CONCAT('[', event_date, ']') ||
-                            CONCAT('(', event_url, ')')
-                            FROM "events_with_info" WHERE country="countries"."name"
-                            AND event_date::date < current_date
-                            ORDER BY event_date DESC LIMIT 1) AS last_event,
-                        rank,
-                        similarity
+                        name,
+                        num_events,
+                        '[' || first_date || '](http://brucebase.wikidot.com' ||
+                            first_url || ')' AS first_event,
+                        '[' || last_date || '](http://brucebase.wikidot.com' ||
+                            last_url || ')' AS last_event
                     FROM
-                        "countries",
+                        country_search,
                         plainto_tsquery('english', %(query)s) query,
+                        to_tsvector('english', name || ' ' || alpha_2 || ' ' || alpha_3
+                            || coalesce(aliases, '')) fts,
                         ts_rank(fts, query) rank,
-                        SIMILARITY(%(query)s, unaccent("countries"."name")) similarity
+                        similarity(name || ' ' || alpha_2 || ' ' || alpha_3 ||
+                            coalesce(aliases, ''), %(query)s) similarity
                     WHERE query @@ fts
-                    ORDER BY rank, similarity DESC NULLS LAST
+                    ORDER BY similarity DESC, rank DESC;
                     """,
                     {"query": country_query},
                 )

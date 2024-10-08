@@ -156,7 +156,7 @@ class Setlist(commands.Cog):
 
             return await res.fetchall()
 
-    async def setlist_embed(
+    async def setlist_embed(  # noqa: C901
         self,
         event: dict,
         ctx: commands.Context,

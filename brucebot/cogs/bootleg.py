@@ -1,3 +1,6 @@
+import datetime
+
+import psycopg
 from cogs.bot_stuff import bot_embed, db, utils, viewmenu
 from discord.ext import commands
 from psycopg.rows import dict_row
@@ -64,6 +67,34 @@ class Bootleg(commands.Cog):
 
         await menu.start()
 
+    @staticmethod
+    async def bootleg_search(date: datetime.datetime, cur: psycopg.AsyncCursor) -> dict:
+        """Search for bootlegs."""
+        res = await cur.execute(
+            """
+            SELECT
+                DISTINCT unaccent(b.title) AS title,
+                b.label,
+                b.slid,
+                CASE
+                    WHEN b.category = 'aud_comp' THEN 'Audio Compilation'
+                    WHEN b.category = 'vid_comp' THEN 'Video Compilation'
+                    WHEN b.category SIMILAR TO 'aud_*' THEN 'Audio'
+                    WHEN b.category SIMILAR TO 'vid_*' THEN 'Video'
+                END as category,
+                b.media_type,
+                v.formatted_loc AS venue_loc
+            FROM "bootlegs" b
+            LEFT JOIN "events_with_info" e ON e.event_id = b.event_id
+            LEFT JOIN "venues_text" v ON v.id = e.venue_id
+            WHERE e.event_date = %(query)s
+            ORDER BY title ASC
+            """,
+            {"query": date.strftime("%Y-%m-%d")},
+        )
+
+        return await res.fetchall()
+
     @commands.command(name="bootleg", aliases=["boot"], usage="<date>")
     async def get_bootlegs(
         self,
@@ -93,30 +124,9 @@ class Bootleg(commands.Cog):
             async with pool.connection() as conn, conn.cursor(
                 row_factory=dict_row,
             ) as cur:
-                res = await cur.execute(
-                    """
-                    SELECT
-                        DISTINCT unaccent(b.title) AS title,
-                        b.label,
-                        b.slid,
-                        CASE
-                            WHEN b.category = 'aud_comp' THEN 'Audio Compilation'
-                            WHEN b.category = 'vid_comp' THEN 'Video Compilation'
-                            WHEN b.category SIMILAR TO 'aud_*' THEN 'Audio'
-                            WHEN b.category SIMILAR TO 'vid_*' THEN 'Video'
-                        END as category,
-                        b.media_type,
-                        e.venue_loc
-                    FROM "bootlegs" b
-                    LEFT JOIN "events_with_info" e ON
-                        e.event_id = ANY(string_to_array(b.event_id, ', '))
-                    WHERE e.event_date = %(query)s
-                    ORDER BY title ASC
-                    """,
-                    {"query": date.strftime("%Y-%m-%d")},
-                )
+                bootlegs = await self.bootleg_search(date=date, cur=cur)
 
-                bootlegs = await res.fetchall()
+                print(bootlegs[0])
 
             if len(bootlegs) > 0:
                 await self.bootleg_embed(

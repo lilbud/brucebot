@@ -14,7 +14,11 @@ async def create_dynamic_menu(
     This is a type of ReactionMenu, which dynamically creates pages
     based on amount of data. Used for Bootleg and Opener/Closer stats.
     """
-    embed = discord.Embed(title=title, description="", color=discord.Color.random())
+    embed = discord.Embed(
+        title=title,
+        description="",
+        color=discord.Color.random(),
+    )
 
     menu = ViewMenu(
         ctx,

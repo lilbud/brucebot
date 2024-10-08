@@ -22,12 +22,10 @@ class Venue(commands.Cog):
         """Create the venue embed and sending."""
         embed = await bot_embed.create_embed(
             ctx=ctx,
-            title=venue["name"],
+            title=venue["formatted_loc"],
             description=f"**Nicknames:** {venue["aliases"]}",
             url=f"http://brucebase.wikidot.com/venue:{venue["brucebase_url"]}",
         )
-
-        embed.add_field(name="Location", value=venue["location"], inline=False)
 
         embed.add_field(name="Appearances", value=venue["num_events"])
 
@@ -43,7 +41,7 @@ class Venue(commands.Cog):
 
         return embed
 
-    async def venue_stats(self, venue_id: str, cur: psycopg.AsyncCursor) -> dict:
+    async def venue_stats(self, venue_id: id, cur: psycopg.AsyncCursor) -> dict:
         """Get stats for the given venue."""
         res = await cur.execute(
             """
@@ -65,20 +63,16 @@ class Venue(commands.Cog):
         res = await cur.execute(
             """
             SELECT
-                brucebase_url,
-                name,
-                city || ', ' ||
-                coalesce(state, country) AS location,
-                num_events,
-                aliases
+                *
             FROM
-                "venues" v,
+                venues_text,
                 plainto_tsquery('english', %(query)s) query,
+                to_tsvector('english', name || ' ' || city || ' ' ||
+                    coalesce(aliases, '')) fts,
                 ts_rank(fts, query) rank,
-                SIMILARITY(%(query)s, name || ' ' || brucebase_url || ' ' ||
-                    coalesce(aliases, '') || ' ' ||
-                    coalesce(city, '')) similarity
-            WHERE query @@ fts AND num_events > 0
+                similarity(name || ' ' || city || ' ' ||
+                    coalesce(aliases, ''), %(query)s) similarity
+            WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;
             """,
             {"query": query},
@@ -111,7 +105,7 @@ class Venue(commands.Cog):
                 venue = await self.venue_search(venue_query, cur)
 
                 if venue is not None:
-                    stats = await self.venue_stats(venue["brucebase_url"], cur)
+                    stats = await self.venue_stats(venue["id"], cur)
 
                     embed = await self.venue_embed(venue, stats, ctx)
 

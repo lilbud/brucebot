@@ -9,6 +9,7 @@ ignore = [
     # "F401", # missing imports
     "ANN101", # missing-type-self
     "RUF001", # ambiguous-unicode-character-string
+    "DTZ007", # quit bugging me about timezones
 ]
 
 [lint.per-file-ignores]

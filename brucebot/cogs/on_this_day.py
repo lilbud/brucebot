@@ -20,7 +20,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
         self,
         ctx: commands.Context,
         *,
-        date_query: str,
+        date_query: str = "",
     ) -> None:
         """Find events on a given day, or current day if empty."""
         async with await db.create_pool() as pool:

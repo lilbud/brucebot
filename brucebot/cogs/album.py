@@ -1,4 +1,5 @@
 import discord
+import ftfy
 import psycopg
 from cogs.bot_stuff import bot_embed, db, utils
 from discord.ext import commands
@@ -84,6 +85,32 @@ class Album(commands.Cog):
 
         return {"least": stats[0], "most": stats[-1]}
 
+    @staticmethod
+    async def album_search(query: str, cur: psycopg.AsyncCursor) -> dict:
+        """Find album by query."""
+        res = await cur.execute(
+            """
+            SELECT
+                r.id,
+                r.brucebase_id,
+                r.mbid,
+                r.release_name,
+                r.release_type,
+                to_char(r.release_date, 'FMMonth DD, YYYY') AS release_date,
+                r.release_thumb
+            FROM
+                "releases" r,
+                plainto_tsquery('english', %(query)s) query,
+                ts_rank(fts, query) rank,
+                SIMILARITY(%(query)s, coalesce(release_short_name, release_name)) similarity
+            WHERE query @@ fts
+            ORDER BY similarity DESC, rank DESC;
+            """,  # noqa: E501
+            {"query": ftfy.fix_text(query)},
+        )
+
+        return await res.fetchone()
+
     @commands.command(
         name="album",
         aliases=["a"],
@@ -106,28 +133,7 @@ class Album(commands.Cog):
             async with pool.connection() as conn, conn.cursor(
                 row_factory=dict_row,
             ) as cur:
-                res = await cur.execute(
-                    """
-                    SELECT
-                        r.id,
-                        r.brucebase_id,
-                        r.mbid,
-                        r.release_name,
-                        r.release_type,
-                        to_char(r.release_date, 'FMMonth DD, YYYY') AS release_date,
-                        r.release_thumb
-                    FROM
-                        "releases" r,
-                        plainto_tsquery('english', %(query)s) query,
-                        ts_rank(fts, query) rank,
-                        SIMILARITY(%(query)s, coalesce(release_short_name, release_name)) similarity
-                    WHERE query @@ fts
-                    ORDER BY similarity DESC, rank DESC;
-                    """,  # noqa: E501
-                    {"query": album_query},
-                )
-
-                album = await res.fetchone()
+                album = await self.album_search(album_query, cur)
 
                 if album:
                     view = discord.ui.View()

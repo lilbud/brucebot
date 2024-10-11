@@ -29,7 +29,7 @@ class Info(commands.Cog):
                     events e
                 LEFT JOIN setlists s ON s.event_id = e.event_id
                 LEFT JOIN songs s1 ON s1.brucebase_url = s.song_id
-                LEFT JOIN venues v ON v.brucebase_url = e.venue_id
+                LEFT JOIN venues v ON v.id = e.venue_id
                 LEFT JOIN relations r ON r.first_appearance = e.event_id
                 LEFT JOIN bands b ON b.first_appearance = e.event_id
                 """,

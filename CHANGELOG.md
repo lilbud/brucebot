@@ -17,3 +17,4 @@
 - 2024-10-01 - added command line argument to specify the database to connect to. When running locally I use the local database, and when deployed it should use Heroku instead.
 - 2024-10-08 - Updated a number of commands. Reason being is that I made some major changes to the database in regards to structure. Commands updated: album, bootleg, location, on_this_day, setlist, song, venue.
 - 2024-10-10 - fixed info command, was broken after the update mentioned above.
+- 2024-10-11 - fixed song command, had similarity in the wrong order and it wasn't catching inputs like 'hope and dreams'

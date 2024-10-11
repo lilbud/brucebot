@@ -214,7 +214,7 @@ class Song(commands.Cog):
                 "songs" s,
                 plainto_tsquery('simple', %(query)s) query,
                 ts_rank(fts, query) rank,
-                SIMILARITY(%(query)s, coalesce(aliases, short_name, song_name)) similarity
+                SIMILARITY(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
             WHERE query @@ fts
             AND similarity >= 0.0415
             ORDER BY similarity DESC, rank DESC;

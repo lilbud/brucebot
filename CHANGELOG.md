@@ -18,3 +18,4 @@
 - 2024-10-08 - Updated a number of commands. Reason being is that I made some major changes to the database in regards to structure. Commands updated: album, bootleg, location, on_this_day, setlist, song, venue.
 - 2024-10-10 - fixed info command, was broken after the update mentioned above.
 - 2024-10-11 - fixed song command, had similarity in the wrong order and it wasn't catching inputs like 'hope and dreams'
+- 2023-10-16 - further database updates, forgot to change the setlist command to match. So the tour was showing the ID instead of the tour name itself.

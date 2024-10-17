@@ -72,8 +72,10 @@ class Setlist(commands.Cog):
             res = await cur.execute(
                 """
                     SELECT
-                        e.*
+                        e.*,
+                        t.tour_name
                     FROM "events_with_info" e
+                    LEFT JOIN tours t ON t.id = e.tour
                     WHERE e.event_date = %(date)s
                     AND e.event_date <= current_date
                     ORDER BY e.event_id
@@ -251,7 +253,7 @@ class Setlist(commands.Cog):
                 value=f"```{"\n".join(notes)}```",
             )
 
-        footer = f"{event['tour']}\nEvent: {event['event_certainty']} - Setlist: {event['setlist_certainty']}"  # noqa: E501
+        footer = f"{event['tour_name']}\nEvent: {event['event_certainty']} - Setlist: {event['setlist_certainty']}"  # noqa: E501
         embed.set_footer(text=footer)
 
         return embed

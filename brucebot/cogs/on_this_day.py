@@ -51,11 +51,12 @@ class OnThisDay(commands.Cog, name="On This Day"):
                         CASE
                             WHEN e1.event_date_note LIKE 'Placeholder%%' THEN ' #' ELSE ''
                         END AS date,
-                        e.artist,
+                        b.name AS artist,
                         e.venue_loc AS location,
                         e.event_url AS url
                     FROM "events_with_info" e
                     LEFT JOIN "events" e1 USING(event_id)
+                    LEFT JOIN bands b ON b.id = e.artist
                     WHERE e.event_date::text LIKE %(name)s
                     AND e.event_url NOT LIKE '/nogig:'
                     ORDER BY e.event_date, e.event_url;

@@ -20,3 +20,4 @@
 - 2024-10-11 - fixed song command, had similarity in the wrong order and it wasn't catching inputs like 'hope and dreams'
 - 2024-10-16 - further database updates, forgot to change the setlist command to match. So the tour was showing the ID instead of the tour name itself.
 - 2024-10-19 - added tour leg tracking to the database. Now on the setlist embed if an event is part of a tour leg, it'll show that. Otherwise it'll default to the tour itself.
+- 2024-10-30 - fixed `On This Day`. It was showing the band id instead of the name.

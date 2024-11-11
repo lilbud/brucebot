@@ -76,25 +76,37 @@ class Location(commands.Cog):
             ) as cur:
                 res = await cur.execute(
                     """
+                        WITH cities_fts AS (
+                            SELECT
+                                c.id,
+                                c.name AS city_name,
+                                s.name AS state_name,
+                                c.name || ', ' || s.state_abbrev AS name,
+                                s.state_abbrev,
+                                c.aliases,
+                                '[' || e.event_date ||
+                                    '](http://brucebase.wikidot.com' ||
+                                    e.brucebase_url || ')' AS first_event,
+                                '[' || e1.event_date ||
+                                    '](http://brucebase.wikidot.com' ||
+                                    e1.brucebase_url || ')' AS last_event,
+                                c.num_events
+                                FROM cities c
+                            LEFT JOIN states s ON s.id = c.state
+                            LEFT JOIN events e ON e.event_id = c.first_played
+                            LEFT JOIN events e1 ON e1.event_id = c.last_played
+                        )
                         SELECT
-                            id,
-                            name,
-                            state_abbrev,
-                            state_name,
-                            aliases,
-                            num_events,
-                            '[' || first_date || '](http://brucebase.wikidot.com' ||
-                                first_url || ')' AS first_event,
-                            '[' || last_date || '](http://brucebase.wikidot.com' ||
-                                last_url || ')' AS last_event
+                            *
                         FROM
-                            city_search,
+                            cities_fts,
                             plainto_tsquery('english', %(query)s) query,
-                            to_tsvector('english', name || ' ' || state_abbrev || ' ' ||
-                                state_name || ' ' || coalesce(aliases, '')) fts,
+                            to_tsvector('english', city_name || ' ' || state_name || ' '
+                                || state_abbrev || ' ' || coalesce(aliases, '')) fts,
                             ts_rank(fts, query) rank,
-                            similarity(name || ' ' || state_abbrev || ' ' || state_name
-                                || ' ' || coalesce(aliases, ''), %(query)s) similarity
+                            similarity(city_name || ' ' || state_name || ' ' ||
+                                state_abbrev || ' ' ||
+                                coalesce(aliases, ''), %(query)s) similarity
                         WHERE query @@ fts
                         ORDER BY similarity DESC, rank DESC NULLS LAST;
                     """,
@@ -135,23 +147,36 @@ class Location(commands.Cog):
             ) as cur:
                 res = await cur.execute(
                     """
+                        WITH states_fts AS (
+                            SELECT
+                                s.name || ', ' || c.name AS name,
+                                s.name AS state_name,
+                                s.state_abbrev,
+                                c.name AS country,
+                                '[' || e.event_date ||
+                                    '](http://brucebase.wikidot.com' ||
+                                    e.brucebase_url || ')' AS first_event,
+                                '[' || e1.event_date ||
+                                    '](http://brucebase.wikidot.com' ||
+                                    e1.brucebase_url || ')' AS last_event,
+                                s.num_events
+                                FROM states s
+                            LEFT JOIN countries c ON c.id = s.country
+                            LEFT JOIN events e ON e.event_id = c.first_played
+                            LEFT JOIN events e1 ON e1.event_id = c.last_played
+                        )
                         SELECT
-                            state_name || ', ' || country AS name,
-                            num_events,
-                            '[' || first_date || '](http://brucebase.wikidot.com' ||
-                                first_url || ')' AS first_event,
-                            '[' || last_date || '](http://brucebase.wikidot.com' ||
-                                last_url || ')' AS last_event
+                            *
                         FROM
-                            state_search,
+                            states_fts,
                             plainto_tsquery('english', %(query)s) query,
-                            to_tsvector('english', state_name || ' ' || state_abbrev
-                                || ' ' || country) fts,
+                            to_tsvector('english', state_name || ' ' || state_abbrev ||
+                                ' ' || country) fts,
                             ts_rank(fts, query) rank,
-                            similarity(state_name || ' ' || state_abbrev || ' ' ||
-                                country, %(query)s) similarity
+                            similarity(state_name || ' ' || state_abbrev ||
+                                ' ' || country, %(query)s) similarity
                         WHERE query @@ fts
-                        ORDER BY similarity DESC, rank DESC;
+                        ORDER BY similarity DESC, rank DESC NULLS LAST;
                     """,
                     {"query": state_query},
                 )
@@ -190,23 +215,35 @@ class Location(commands.Cog):
             ) as cur:
                 res = await cur.execute(
                     """
+                    WITH states_fts AS (
+                        SELECT
+                            c.name,
+                            c.num_events,
+                            c.alpha_2,
+                            c.alpha_3,
+                            c.aliases,
+                            '[' || e.event_date ||
+                                '](http://brucebase.wikidot.com' ||
+                                e.brucebase_url || ')' AS first_event,
+                            '[' || e1.event_date ||
+                                '](http://brucebase.wikidot.com' ||
+                                e1.brucebase_url || ')' AS last_event
+                            FROM countries c
+                        LEFT JOIN events e ON e.event_id = c.first_played
+                        LEFT JOIN events e1 ON e1.event_id = c.last_played
+                    )
                     SELECT
-                        name,
-                        num_events,
-                        '[' || first_date || '](http://brucebase.wikidot.com' ||
-                            first_url || ')' AS first_event,
-                        '[' || last_date || '](http://brucebase.wikidot.com' ||
-                            last_url || ')' AS last_event
+                        *
                     FROM
-                        country_search,
+                        states_fts,
                         plainto_tsquery('english', %(query)s) query,
-                        to_tsvector('english', name || ' ' || alpha_2 || ' ' || alpha_3
-                            || coalesce(aliases, '')) fts,
+                        to_tsvector('english', name || ' ' || alpha_2 || ' ' ||
+                            alpha_3 || coalesce(aliases, '')) fts,
                         ts_rank(fts, query) rank,
                         similarity(name || ' ' || alpha_2 || ' ' || alpha_3 ||
                             coalesce(aliases, ''), %(query)s) similarity
                     WHERE query @@ fts
-                    ORDER BY similarity DESC, rank DESC;
+                    ORDER BY similarity DESC, rank DESC NULLS LAST;
                     """,
                     {"query": country_query},
                 )

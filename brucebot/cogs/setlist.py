@@ -75,8 +75,8 @@ class Setlist(commands.Cog):
                         e.*,
                         coalesce(t1.name, t.tour_name) AS tour_name
                     FROM "events_with_info" e
-                    LEFT JOIN event_details e1 USING (event_id)
-                    LEFT JOIN tours t ON t.id = e1.tour
+                    LEFT JOIN events e1 USING (event_id)
+                    LEFT JOIN tours t ON t.id = e1.tour_id
                     LEFT JOIN tour_legs t1 ON t1.id = e1.tour_leg
                     WHERE e.event_date = %(date)s
                     AND e.event_date <= current_date

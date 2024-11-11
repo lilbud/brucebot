@@ -21,3 +21,4 @@
 - 2024-10-16 - further database updates, forgot to change the setlist command to match. So the tour was showing the ID instead of the tour name itself.
 - 2024-10-19 - added tour leg tracking to the database. Now on the setlist embed if an event is part of a tour leg, it'll show that. Otherwise it'll default to the tour itself.
 - 2024-10-30 - fixed `On This Day`. It was showing the band id instead of the name.
+- 2024-11-11 - made changes to the database. Merged events and event_details as having them separate just got annoying to deal with. Also removed the "search" views, which I made to help with full text search, but realized I could just use a CTE instead. Updated location, setlist, and song to reflect these changes.

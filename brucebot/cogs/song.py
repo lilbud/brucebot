@@ -45,11 +45,11 @@ class Song(commands.Cog):
                 t.tour_name AS tour,
                 count(*)
             FROM setlists s
-            LEFT JOIN event_details e ON e.event_id = s.event_id
+            LEFT JOIN events e ON e.event_id = s.event_id
             LEFT JOIN tours t ON t.brucebase_id = e.tour
             WHERE
                 s.song_id = %(song)s
-                AND t.brucebase_id <> ALL (ARRAY['tour_no', 'tour_ivw'])
+                AND t.brucebase_id <> ALL (ARRAY[20, 23])
                 AND s.set_name = ANY (ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
             GROUP BY t.tour_name, t.start_year, t.end_year
             ORDER BY t.start_year ASC
@@ -74,7 +74,7 @@ class Song(commands.Cog):
                 e1.brucebase_url AS last_url,
                 s.num_plays_public,
                 round((s.num_plays_public /
-                    (SELECT COUNT(event_id) FROM "event_details"
+                    (SELECT COUNT(event_id) FROM "events"
                     WHERE event_certainty=ANY(ARRAY['Confirmed', 'Probable']))::float * 100)::numeric, 2) AS frequency,
                 coalesce(s1.num_post_release, 0) AS num_post_release,
                 s.opener,

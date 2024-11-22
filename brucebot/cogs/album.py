@@ -94,18 +94,18 @@ class Album(commands.Cog):
                 r.id,
                 r.brucebase_id,
                 r.mbid,
-                r.release_name,
-                r.release_type,
+                r.name AS release_name,
+                r.type AS release_type,
                 to_char(r.release_date, 'FMMonth DD, YYYY') AS release_date,
-                r.release_thumb
+                r.thumb AS release_thumb
             FROM
                 "releases" r,
                 plainto_tsquery('english', %(query)s) query,
                 ts_rank(fts, query) rank,
-                SIMILARITY(%(query)s, coalesce(release_short_name, release_name)) similarity
+                SIMILARITY(%(query)s, coalesce(short_name, name)) similarity
             WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;
-            """,  # noqa: E501
+            """,
             {"query": ftfy.fix_text(query)},
         )
 

@@ -25,3 +25,4 @@
 - 2024-11-22
     - forgot to add a "not found" embed to the archive command. There *was* one in case of a date parsing error, but I forgot to include the one if there are no results.
     - added `snippet` as a command. Allows checking for if a song was ever played as a snippet. Also added a `snippet count` to the normal song embed.
+    - updated `album` to new schema. I changed the names of some columns and didn't yet update the bot.

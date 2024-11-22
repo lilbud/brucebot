@@ -35,6 +35,7 @@ class Archive(commands.Cog):
         shows: dict,
         ctx: commands.Context,
     ) -> None:
+        """Embed for getting results from Archive.org."""
         menu = await viewmenu.create_dynamic_menu(
             ctx=ctx,
             page_counter="Page $/&",

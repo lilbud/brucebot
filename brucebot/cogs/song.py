@@ -77,6 +77,8 @@ class Song(commands.Cog):
                     (SELECT COUNT(event_id) FROM "events"
                     WHERE event_certainty=ANY(ARRAY['Confirmed', 'Probable']))::float * 100)::numeric, 2) AS frequency,
                 coalesce(s1.num_post_release, 0) AS num_post_release,
+                s.num_plays_private,
+                s.num_plays_snippet,
                 s.opener,
                 s.closer,
                 s.original_artist
@@ -195,6 +197,11 @@ class Song(commands.Cog):
             embed.add_field(name="Opener:", value=song["opener"])
             embed.add_field(name="Closer:", value=song["closer"])
             embed.add_field(name="Frequency:", value=f"{song["frequency"]}%")
+
+            embed.add_field(
+                name="Snippet:",
+                value=f"{song["num_plays_snippet"]}",
+            )
 
         return embed
 
@@ -373,6 +380,91 @@ class Song(commands.Cog):
                 else:
                     embed = await bot_embed.not_found_embed(
                         command=self.__class__.__name__,
+                        message=song_query,
+                    )
+                    await ctx.send(embed=embed)
+
+    @commands.command(name="snippet", aliases=["snip"], usage="<song>")
+    async def snippet_find(
+        self,
+        ctx: commands.Context,
+        *,
+        song_query: str,
+    ) -> None:
+        """Search database for songs as snippets."""
+        song_query = await utils.clean_message(song_query)
+
+        async with await db.create_pool() as pool:
+            await ctx.typing()
+
+            async with pool.connection() as conn, conn.cursor(
+                row_factory=dict_row,
+            ) as cur:
+                song = await self.song_find_fuzzy(song_query, cur)
+
+                if song:
+                    res = await cur.execute(
+                        """SELECT
+                            count(sn.snippet_id) AS count,
+                            MIN(e.event_date) AS first,
+                            (SELECT brucebase_url FROM events WHERE
+                                event_id = MIN(sn.event_id)) AS first_url,
+                            MAX(e.event_date) AS last,
+                            (SELECT brucebase_url FROM events WHERE
+                                event_id = MAX(sn.event_id)) AS last_url
+                        FROM snippets sn
+                        LEFT JOIN events e ON e.event_id = sn.event_id
+                        WHERE snippet_id = %s""",
+                        (song["brucebase_url"],),
+                    )
+
+                    snippet = await res.fetchone()
+
+                    release = await self.get_first_release(
+                        song=song["brucebase_url"],
+                        cur=cur,
+                    )
+
+                    song_info = await self.get_song_info(
+                        url=song["brucebase_url"],
+                        cur=cur,
+                    )
+
+                    embed = await bot_embed.create_embed(
+                        ctx=ctx,
+                        title=f"{song_info["song_name"]} (snippet)",
+                    )
+
+                    if release:
+                        embed.add_field(
+                            name="Original Release:",
+                            value=f"{release['name']} _({release['release_date']})_",
+                            inline=False,
+                        )
+
+                    try:
+                        embed.set_thumbnail(url=release["thumb"])
+                    except TypeError:
+                        embed.set_thumbnail(
+                            url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
+                        )
+
+                    embed.add_field(name="Count:", value=snippet["count"])
+
+                    if snippet["count"] > 0:
+                        embed.add_field(
+                            name="First:",
+                            value=f"[{snippet["first"]}](<http://brucebase.wikidot.com{snippet['first_url']}>)",
+                        )
+                        embed.add_field(
+                            name="Last:",
+                            value=f"[{snippet["last"]}](<http://brucebase.wikidot.com{snippet['last_url']}>)",
+                        )
+
+                    await ctx.send(embed=embed)
+                else:
+                    embed = await bot_embed.not_found_embed(
+                        command="snippet",
                         message=song_query,
                     )
                     await ctx.send(embed=embed)

@@ -27,3 +27,4 @@
     - added `snippet` as a command. Allows checking for if a song was ever played as a snippet. Also added a `snippet count` to the normal song embed.
     - updated `album` to new schema. I changed the names of some columns and didn't yet update the bot.
     - fix song embed missing album art, forgot the update the link.
+    - added a check to only respond to commands. Found that if someone started their message with multiple exclamation points, or a message of nothing but them, the bot would respond with the invalid command embed. This will only respond to a command like `!CMD`, and ignore stuff like `!!!!!`

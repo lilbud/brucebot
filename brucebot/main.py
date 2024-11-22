@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -60,6 +61,10 @@ class BruceBot(commands.Bot):
     async def on_message(self, message: discord.Message) -> None:
         """When message sent."""
         if message.author.bot:  # If the message is sent by a bot, return
+            return
+
+        # checks for only one instance of a prefix character
+        if not re.search(r"!\w", message.content):
             return
 
         await self.process_commands(message)

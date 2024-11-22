@@ -143,7 +143,7 @@ class Song(commands.Cog):
         )
 
         try:
-            embed.set_thumbnail(url=release["release_thumb"])
+            embed.set_thumbnail(url=release["thumb"])
         except TypeError:
             embed.set_thumbnail(
                 url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
@@ -152,7 +152,7 @@ class Song(commands.Cog):
         if release:
             embed.add_field(
                 name="Original Release:",
-                value=f"{release['release_name']} _({release['release_date']})_",
+                value=f"{release['name']} _({release['release_date']})_",
                 inline=False,
             )
 

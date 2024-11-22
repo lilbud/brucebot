@@ -92,6 +92,12 @@ class Archive(commands.Cog):
 
                     if shows:
                         await self.archive_embed(date, shows, ctx)
+                    else:
+                        embed = await bot_embed.not_found_embed(
+                            command=self.__class__.__name__,
+                            message=date_query,
+                        )
+                        await ctx.send(embed=embed)
 
                 else:
                     result = await cur.execute(

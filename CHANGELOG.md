@@ -22,3 +22,4 @@
 - 2024-10-19 - added tour leg tracking to the database. Now on the setlist embed if an event is part of a tour leg, it'll show that. Otherwise it'll default to the tour itself.
 - 2024-10-30 - fixed `On This Day`. It was showing the band id instead of the name.
 - 2024-11-11 - made changes to the database. Merged events and event_details as having them separate just got annoying to deal with. Also removed the "search" views, which I made to help with full text search, but realized I could just use a CTE instead. Updated location, setlist, and song to reflect these changes.
+- 2024-11-22 - forgot to add a "not found" embed to the archive command. There *was* one in case of a date parsing error, but I forgot to include the one if there are no results.

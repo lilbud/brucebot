@@ -12,25 +12,6 @@ class Stats(commands.Cog):
         self.bot = bot
         self.description = "Stats about songs Bruce has played live."
 
-    async def stats_menu(
-        self,
-        ctx: commands.Context,
-        data: list,
-        title: str,
-    ) -> None:
-        """Create view menu for stats results."""
-        menu = await viewmenu.create_dynamic_menu(
-            ctx=ctx,
-            page_counter="Page $/&",
-            rows=10,
-            title=title,
-        )
-
-        for row in data:
-            menu.add_row(data=row)
-
-        await menu.start()
-
     async def song_fuzzy_search(
         self,
         query: str,
@@ -70,10 +51,10 @@ class Stats(commands.Cog):
                 s.position,
                 count(*) AS total
             FROM "setlists" s
-            LEFT JOIN "event_details" e USING (event_id)
+            LEFT JOIN "events" e USING (event_id)
             LEFT JOIN "songs" s1 ON s1.brucebase_url = s.song_id
             WHERE s.position = %(position)s
-            AND e.tour = %(tour_id)s
+            AND e.tour_id = %(tour_id)s
             AND s.set_name = ANY(ARRAY['Show'::text,'Set 1'::text,'Set 2'::text,'Encore'::text])
             GROUP BY s1.song_name, s.position
             ORDER BY count(*) DESC
@@ -91,6 +72,7 @@ class Stats(commands.Cog):
         """."""
         res = await cur.execute(
             """SELECT
+                t.id,
                 t.brucebase_id,
                 t.tour_name
             FROM
@@ -260,7 +242,7 @@ class Stats(commands.Cog):
                 if tour:
                     stats = await self.get_tour_stats(
                         cur,
-                        tour_id=tour["brucebase_id"],
+                        tour_id=tour["id"],
                         position="Show Opener",
                     )
 
@@ -268,10 +250,11 @@ class Stats(commands.Cog):
                         f"{index}. **{row["song_name"]}** - *{row["total"]} time(s)*"
                         for index, row in enumerate(stats)
                     ]
-                    await self.stats_menu(
+                    await viewmenu.stats_menu(
                         ctx=ctx,
                         data=data,
                         title=f"Top Openers For: {tour['tour_name']}",
+                        rows=10,
                     )
                 else:
                     embed = await bot_embed.not_found_embed(
@@ -300,7 +283,7 @@ class Stats(commands.Cog):
                 if tour:
                     stats = await self.get_tour_stats(
                         cur,
-                        tour_id=tour["brucebase_id"],
+                        tour_id=tour["id"],
                         position="Show Closer",
                     )
 
@@ -308,10 +291,11 @@ class Stats(commands.Cog):
                         f"{index}. **{row["song_name"]}** - *{row["total"]} time(s)*"
                         for index, row in enumerate(stats)
                     ]
-                    await self.stats_menu(
+                    await viewmenu.stats_menu(
                         ctx=ctx,
                         data=data,
                         title=f"Top Closers For: {tour['tour_name']}",
+                        rows=10,
                     )
                 else:
                     embed = await bot_embed.not_found_embed(
@@ -359,10 +343,11 @@ class Stats(commands.Cog):
                         f"{index}. **{row["song_name"]}** - *{row["total"]} time(s)*"
                         for index, row in enumerate(stats)
                     ]
-                    await self.stats_menu(
+                    await viewmenu.stats_menu(
                         ctx=ctx,
                         data=data,
                         title=f"Top Openers For: {year}",
+                        rows=10,
                     )
                 else:
                     embed = await bot_embed.not_found_embed(
@@ -410,10 +395,11 @@ class Stats(commands.Cog):
                         f"{index}. **{row["song_name"]}** - *{row["total"]} time(s)*"
                         for index, row in enumerate(stats)
                     ]
-                    await self.stats_menu(
+                    await viewmenu.stats_menu(
                         ctx=ctx,
                         data=data,
                         title=f"Top Closers For: {year}",
+                        rows=10,
                     )
                 else:
                     embed = await bot_embed.not_found_embed(

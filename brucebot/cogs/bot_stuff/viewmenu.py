@@ -3,6 +3,26 @@ from discord.ext import commands
 from reactionmenu import ViewButton, ViewMenu
 
 
+async def stats_menu(
+    ctx: commands.Context,
+    data: list,
+    title: str,
+    rows: int = 10,
+) -> None:
+    """Create view menu for stats results."""
+    menu = await create_dynamic_menu(
+        ctx=ctx,
+        page_counter="Page $/&",
+        rows=rows,
+        title=title,
+    )
+
+    for row in data:
+        menu.add_row(data=row)
+
+    await menu.start()
+
+
 async def create_dynamic_menu(
     ctx: commands.Context,
     page_counter: str,

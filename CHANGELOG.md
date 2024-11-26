@@ -29,3 +29,4 @@
     - fix song embed missing album art, forgot the update the link.
     - added a check to only respond to commands. Found that if someone started their message with multiple exclamation points, or a message of nothing but them, the bot would respond with the invalid command embed. This will only respond to a command like `!CMD`, and ignore stuff like `!!!!!`
 - 2024-11-24 - fixed stats command. Forgot to change the tour finder to use the numerical ID for events instead of the brucebase tag.
+- 2024-11-26 - fixed tour song count command. Didn't change the joins to reference the tour ID compared to the brucebase tag.

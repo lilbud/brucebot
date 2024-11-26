@@ -46,10 +46,10 @@ class Song(commands.Cog):
                 count(*)
             FROM setlists s
             LEFT JOIN events e ON e.event_id = s.event_id
-            LEFT JOIN tours t ON t.brucebase_id = e.tour
+            LEFT JOIN tours t ON t.id = e.tour_id
             WHERE
                 s.song_id = %(song)s
-                AND t.brucebase_id <> ALL (ARRAY[20, 23])
+                AND t.id <> ALL (ARRAY[20, 23])
                 AND s.set_name = ANY (ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
             GROUP BY t.tour_name, t.start_year, t.end_year
             ORDER BY t.start_year ASC

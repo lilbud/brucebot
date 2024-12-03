@@ -81,7 +81,7 @@ class Setlist(commands.Cog):
                             count(e.event_id) OVER (PARTITION BY run) || ')' AS run_name
                     FROM events e
                     LEFT JOIN runs r ON r.id = e.run
-                ) WHERE event_id = %(event)s
+                ) t WHERE t.event_id = %(event)s
                 """,
                 {"event": event},
             )

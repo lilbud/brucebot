@@ -77,12 +77,12 @@ class Setlist(commands.Cog):
                     SELECT
                         e.event_id,
                         r.name || ' (' ||
-                            row_number() OVER (PARTITION BY run) || '/' ||
-                            count(e.event_id) OVER (PARTITION BY run) || ')' AS run_name
+                            row_number() OVER (PARTITION BY e.run ORDER BY e.event_id) || '/' ||
+                            count(e.event_id) OVER (PARTITION BY e.run ORDER BY e.event_id) || ')' AS run_name
                     FROM events e
                     LEFT JOIN runs r ON r.id = e.run
                 ) t WHERE t.event_id = %(event)s
-                """,
+                """,  # noqa: E501
                 {"event": event},
             )
 

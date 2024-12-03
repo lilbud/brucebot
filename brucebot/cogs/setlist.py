@@ -1,3 +1,5 @@
+import datetime
+import re
 from pathlib import Path
 
 import discord
@@ -62,6 +64,31 @@ class Setlist(commands.Cog):
 
         return [f"[{row["num"]}] {row["note"]}" for row in event_notes]
 
+    async def get_run(
+        self,
+        event: str,
+        pool: AsyncConnectionPool,
+    ) -> str:
+        """Get the position and number of shows in a run for a run and event."""
+        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            res = await cur.execute(
+                """
+                SELECT run_name FROM (
+                    SELECT
+                        e.event_id,
+                        r.name || ' (' ||
+                            row_number() OVER (PARTITION BY run) || '/' ||
+                            count(e.event_id) OVER (PARTITION BY run) || ')' AS run_name
+                    FROM events e
+                    LEFT JOIN runs r ON r.id = e.run
+                ) WHERE event_id = %(event)s
+                """,
+                {"event": event},
+            )
+
+            run = await res.fetchone()
+            return run["run_name"]
+
     async def get_events_by_exact_date(
         self,
         date: str,
@@ -73,11 +100,15 @@ class Setlist(commands.Cog):
                 """
                     SELECT
                         e.*,
-                        coalesce(t1.name, t.tour_name) AS tour_name
-                    FROM "events_with_info" e
-                    LEFT JOIN events e1 USING (event_id)
-                    LEFT JOIN tours t ON t.id = e1.tour_id
-                    LEFT JOIN tour_legs t1 ON t1.id = e1.tour_leg
+                        r.name AS run,
+                        'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
+                        v.formatted_loc AS venue_loc,
+                        coalesce(t1.name, t.tour_name) AS tour
+                    FROM "events" e
+                    LEFT JOIN tours t ON t.id = e.tour_id
+                    LEFT JOIN venues_text v ON v.id = e.venue_id
+                    LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
+                    LEFT JOIN runs r ON r.id = e.run
                     WHERE e.event_date = %(date)s
                     AND e.event_date <= current_date
                     ORDER BY e.event_id
@@ -125,37 +156,8 @@ class Setlist(commands.Cog):
         """Use provided Brucebase URL to pull the exact event instead of date."""
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             res = await cur.execute(
-                """SELECT e.* FROM events_with_info e WHERE event_url=%s""",
+                """SELECT e.* FROM events e WHERE event_url=%s""",
                 (url,),
-            )
-
-            return await res.fetchall()
-
-    async def get_events_by_fuzzy_date(
-        self,
-        date: str,
-        pool: AsyncConnectionPool,
-    ) -> list[str]:
-        """Get events for a given date."""
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            res = await cur.execute(
-                """SELECT
-                    e.*
-                FROM
-                    "events_with_info" e,
-                    to_tsvector(event_date
-                        || ' ' || to_char(event_date, 'FMMonth')
-                        || ' ' || to_char(event_date, 'DD')
-                        || ' ' || to_char(event_date, 'YY')
-                        || ' ' || f_unaccent(venue_loc)
-                        || ' ' || coalesce(state_name, '')
-                        || ' ' || coalesce(formatted_date, '')
-                        || ' ' || coalesce(event_title, '')) document,
-                    plainto_tsquery(%(date)s) query
-                WHERE query @@ document
-                ORDER BY event_id ASC NULLS LAST
-                LIMIT 16;""",
-                {"date": date},
             )
 
             return await res.fetchall()
@@ -175,8 +177,8 @@ class Setlist(commands.Cog):
         if event["event_title"]:
             description.append(f"**Title:** {event['event_title']}")
 
-        if event["note"]:
-            description.append(f"**Notes:**\n- {event['note']}")
+        if event["event_date_note"]:
+            description.append(f"**Notes:**\n- {event['event_date_note']}")
 
         nugs_release = await self.get_nugs_release(
             event_id=event["event_id"],
@@ -199,11 +201,13 @@ class Setlist(commands.Cog):
         if len(releases) > 0:
             description.append(f"**Releases:** {", ".join(releases)}")
 
+        date = datetime.datetime.strftime(event["event_date"], "%Y-%m-%d [%a]")
+
         embed = await bot_embed.create_embed(
             ctx=ctx,
-            title=event["formatted_date"],
+            title=date,
             description="\n".join(description),
-            url=event["event_url"],
+            url=f"http://brucebase.wikidot.com{event["brucebase_url"]}",
         )
 
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
@@ -243,7 +247,7 @@ class Setlist(commands.Cog):
 
                 embed.add_field(
                     name=set_name,
-                    value=set_n["setlist"],
+                    value=f"> {set_n["setlist"]}",
                     inline=False,
                 )
 
@@ -252,10 +256,23 @@ class Setlist(commands.Cog):
 
             embed.add_field(
                 name="Setlist Notes:",
-                value=f"```{"\n".join(notes)}```",
+                value=f"```{re.sub("''", "'", "\n".join(notes))}```",
             )
 
-        footer = f"{event['tour_name']}\nEvent: {event['event_certainty']} - Setlist: {event['setlist_certainty']}"  # noqa: E501
+        event_info = {
+            "run": await self.get_run(event["event_id"], pool),
+            "tour": event["tour"],
+            "event": event["event_certainty"],
+            "setlist": event["setlist_certainty"],
+        }
+
+        footer = "\n".join(
+            [
+                f"{key.title()}: {value}"
+                for key, value in event_info.items()
+                if value is not None
+            ],
+        )
         embed.set_footer(text=footer)
 
         return embed
@@ -281,8 +298,6 @@ class Setlist(commands.Cog):
                 events = await self.parse_brucebase_url(date_query, pool)
             else:
                 date = await utils.date_parsing(date_query)
-
-                print(date)
 
                 try:
                     date.strftime("%Y-%m-%d")

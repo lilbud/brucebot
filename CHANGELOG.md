@@ -31,3 +31,4 @@
 - 2024-11-24 - fixed stats command. Forgot to change the tour finder to use the numerical ID for events instead of the brucebase tag.
 - 2024-11-26 - fixed tour song count command. Didn't change the joins to reference the tour ID compared to the brucebase tag.
 - 2024-12-03 - added event run tracking to the database, and also added it to the setlist embed if an event belongs to a longer run of shows.
+- 2024-12-13 - changed song tour stat command to order by num performances descending, instead of chronologically.

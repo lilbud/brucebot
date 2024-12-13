@@ -49,10 +49,10 @@ class Song(commands.Cog):
             LEFT JOIN tours t ON t.id = e.tour_id
             WHERE
                 s.song_id = %(song)s
-                AND t.id <> ALL (ARRAY[20, 23])
-                AND s.set_name = ANY (ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
+                AND t.id <> ALL (ARRAY[43, 20, 23])
+                AND s.set_name = ANY (ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
             GROUP BY t.tour_name, t.start_year, t.end_year
-            ORDER BY t.start_year ASC
+            ORDER BY count(*) DESC
             """,
             {"song": song_id},
         )

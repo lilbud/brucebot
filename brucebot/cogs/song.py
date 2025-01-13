@@ -53,7 +53,7 @@ class Song(commands.Cog):
                 AND s.set_name = ANY (ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
             GROUP BY t.tour_name, t.start_year, t.end_year
             ORDER BY count(*) DESC
-            """,
+            """,  # noqa: E501
             {"song": song_id},
         )
 

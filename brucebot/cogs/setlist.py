@@ -60,8 +60,6 @@ class Setlist(commands.Cog):
 
         event_notes = await res.fetchall()
 
-        print(event_notes)
-
         return [f"[{row["num"]}] {row["note"]}" for row in event_notes]
 
     async def get_run(
@@ -273,7 +271,7 @@ class Setlist(commands.Cog):
                 if value is not None
             ],
         )
-        embed.set_footer(text=footer)
+        embed.set_footer(text=f"\n{footer}")
 
         return embed
 

@@ -1,4 +1,5 @@
 # CHANGELOG
+
 ### This changelog was part of the README, but its now moved to its own file.
 
 - 2024-07-30 - Initial commit, almost all features from Brucebot 1.0 moved over. Complete rewrite of bot from scratch, largely due to a rewrite of the Databruce project.
@@ -23,12 +24,19 @@
 - 2024-10-30 - fixed `On This Day`. It was showing the band id instead of the name.
 - 2024-11-11 - made changes to the database. Merged events and event_details as having them separate just got annoying to deal with. Also removed the "search" views, which I made to help with full text search, but realized I could just use a CTE instead. Updated location, setlist, and song to reflect these changes.
 - 2024-11-22
-    - forgot to add a "not found" embed to the archive command. There *was* one in case of a date parsing error, but I forgot to include the one if there are no results.
-    - added `snippet` as a command. Allows checking for if a song was ever played as a snippet. Also added a `snippet count` to the normal song embed.
-    - updated `album` to new schema. I changed the names of some columns and didn't yet update the bot.
-    - fix song embed missing album art, forgot the update the link.
-    - added a check to only respond to commands. Found that if someone started their message with multiple exclamation points, or a message of nothing but them, the bot would respond with the invalid command embed. This will only respond to a command like `!CMD`, and ignore stuff like `!!!!!`
+  - forgot to add a "not found" embed to the archive command. There _was_ one in case of a date parsing error, but I forgot to include the one if there are no results.
+  - added `snippet` as a command. Allows checking for if a song was ever played as a snippet. Also added a `snippet count` to the normal song embed.
+  - updated `album` to new schema. I changed the names of some columns and didn't yet update the bot.
+  - fix song embed missing album art, forgot the update the link.
+  - added a check to only respond to commands. Found that if someone started their message with multiple exclamation points, or a message of nothing but them, the bot would respond with the invalid command embed. This will only respond to a command like `!CMD`, and ignore stuff like `!!!!!`
 - 2024-11-24 - fixed stats command. Forgot to change the tour finder to use the numerical ID for events instead of the brucebase tag.
 - 2024-11-26 - fixed tour song count command. Didn't change the joins to reference the tour ID compared to the brucebase tag.
 - 2024-12-03 - added event run tracking to the database, and also added it to the setlist embed if an event belongs to a longer run of shows.
 - 2024-12-13 - changed song tour stat command to order by num performances descending, instead of chronologically.
+- 2025-03-08 - _spongebob narrator voice_ 3 months later
+  - reformatted setlist command. Changed the setlist notes to just be on their own instead of inside a codeblock. This allows for embedded links.
+  - Setlist note will now link to Musicbrainz if a song was released officially on a retail release (not a nugs archive).
+  - added the option to query for setlists using the Brucebase URL and the events id. This allows for getting specific events when there are multiple on a day.
+    - The BB URL option was part of the bot, but until now hasn't worked as intended. It would simply pull the date from the url, then continue as usual. So, if there were multiple events, it would get all of them, rather than just the single event for that url.
+    - The event_id would simply be parsed as a date and go from there. Which works in the case of single event days, but is pointless for multi-event days.
+  - releases are now gotten in one function, rather than one for nugs and archive. Just makes things cleaner.

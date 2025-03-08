@@ -6,7 +6,7 @@ import discord
 from dateutil import parser
 
 
-async def date_parsing(date: str) -> datetime.datetime:
+async def date_parsing(date: str) -> datetime.datetime | Exception:
     """Input date parsing.
 
     Attempt to parse the provided the date into a Python datetime object.
@@ -15,8 +15,8 @@ async def date_parsing(date: str) -> datetime.datetime:
     """
     try:
         return parser.parse(date).date()
-    except (parser.ParserError, AttributeError):
-        return date
+    except parser.ParserError as e:
+        return e
 
 
 async def format_link(url: str, text: str) -> str:

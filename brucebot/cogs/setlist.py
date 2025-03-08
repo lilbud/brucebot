@@ -5,6 +5,7 @@ from pathlib import Path
 import discord
 import psycopg
 from cogs.bot_stuff import bot_embed, db, utils, viewmenu
+from dateutil.parser import ParserError
 from discord.ext import commands
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
@@ -24,15 +25,13 @@ class Setlist(commands.Cog):
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             res = await cur.execute(
                 """SELECT
-                    MAX(e.event_date::text) AS date
+                    MAX(e.event_id) AS id
                 FROM "setlists" s
                 LEFT JOIN "events" e USING(event_id)
                 """,
             )
 
-            latest = await res.fetchone()
-
-            return latest["date"]
+            return await res.fetchone()
 
     async def get_event_notes(
         self,
@@ -44,11 +43,14 @@ class Setlist(commands.Cog):
             """
                 SELECT DISTINCT
                     s.num,
+                    s.note,
                     s.note || CASE
-                        WHEN s.note = ANY (ARRAY['Tour Debut', 'Bustout'])
+                        WHEN s.note ~ ANY(ARRAY['_*Tour Debut_*', '_*Bustout_*'])
                         THEN ', LTP: ' || e.event_date || ' (' || s.gap || ' shows)'
                         ELSE ''
-                    END as note
+                    END as formatted_note,
+                    e.event_date,
+                    s.gap
                 FROM
                 setlist_notes s
                 LEFT JOIN events e ON e.event_id = s.last
@@ -58,9 +60,10 @@ class Setlist(commands.Cog):
             {"event": event_id},
         )
 
-        event_notes = await res.fetchall()
-
-        return [f"[{row["num"]}] {row["note"]}" for row in event_notes]
+        return [
+            f"\t\t[{row['num']}] {row['formatted_note']}"
+            for row in await res.fetchall()
+        ]
 
     async def get_run(
         self,
@@ -108,7 +111,6 @@ class Setlist(commands.Cog):
                     LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
                     LEFT JOIN runs r ON r.id = e.run
                     WHERE e.event_date = %(date)s
-                    AND e.event_date <= current_date
                     ORDER BY e.event_id
                     """,
                 {"date": date},
@@ -116,51 +118,106 @@ class Setlist(commands.Cog):
 
             return await res.fetchall()
 
-    async def get_nugs_release(
+    async def get_event_by_id(
         self,
-        event_id: str,
+        event: str,
         pool: AsyncConnectionPool,
-    ) -> dict:
-        """Get the cover of the nugs release if there is one."""
+    ) -> list["str"]:
+        """Get event for a given id."""
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             res = await cur.execute(
-                """SELECT
-                    nugs_url AS url
-                FROM "nugs_releases"
-                WHERE event_id=%s;""",
-                (event_id,),
-            )
-
-            return await res.fetchone()
-
-    async def get_archive_links(
-        self,
-        event_id: str,
-        pool: AsyncConnectionPool,
-    ) -> dict:
-        """Get links to archive.org if i uploaded a tape."""
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            res = await cur.execute(
-                """SELECT
-                    archive_url AS url
-                FROM "archive_links"
-                WHERE event_id=%s;""",
-                (event_id,),
-            )
-
-            return await res.fetchone()
-
-    async def parse_brucebase_url(self, url: str, pool: AsyncConnectionPool) -> str:
-        """Use provided Brucebase URL to pull the exact event instead of date."""
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            res = await cur.execute(
-                """SELECT e.* FROM events e WHERE event_url=%s""",
-                (url,),
+                """
+                    SELECT
+                        e.*,
+                        r.name AS run,
+                        'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
+                        v.formatted_loc AS venue_loc,
+                        coalesce(t1.name, t.tour_name) AS tour
+                    FROM "events" e
+                    LEFT JOIN tours t ON t.id = e.tour_id
+                    LEFT JOIN venues_text v ON v.id = e.venue_id
+                    LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
+                    LEFT JOIN runs r ON r.id = e.run
+                    WHERE e.event_id = %(event)s
+                    ORDER BY e.event_id
+                    """,
+                {"event": event},
             )
 
             return await res.fetchall()
 
-    async def setlist_embed(  # noqa: C901
+    # async def get_nugs_release(
+    #     self,
+    #     event_id: str,
+    #     pool: AsyncConnectionPool,
+    # ) -> dict:
+    #     """Get the cover of the nugs release if there is one."""
+    #     async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+    #         res = await cur.execute(
+    #             """SELECT
+    #                 nugs_url AS url,
+    #                 name
+    #             FROM "nugs_releases"
+    #             WHERE event_id=%s;""",
+    #             (event_id,),
+    #         )
+
+    #         return await res.fetchone()
+
+    async def get_releases(
+        self,
+        event_id: str,
+        pool: AsyncConnectionPool,
+    ) -> list:
+        """Get all releases, nugs and/or archive if exist."""
+        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            res = await cur.execute(
+                """
+                SELECT unnest(array_remove(array[nugs, archive], NULL)) AS links FROM (
+                    SELECT
+                        '[' || n.name || '](' || n.nugs_url || ')' AS nugs,
+                        '[Archive.org](' || a.archive_url || ')' AS archive
+                    FROM events e
+                    LEFT JOIN archive_links a USING(event_id)
+                    LEFT JOIN "nugs_releases" n USING(event_id)
+                    WHERE e.event_id=%(event)s
+                )
+                """,
+                {"event": event_id},
+            )
+
+            return [rel["links"] for rel in await res.fetchall()]
+
+    # async def get_archive_links(
+    #     self,
+    #     event_id: str,
+    #     pool: AsyncConnectionPool,
+    # ) -> dict:
+    #     """Get links to archive.org if i uploaded a tape."""
+    #     async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+    #         res = await cur.execute(
+    #             """SELECT
+    #                 archive_url AS url
+    #             FROM "archive_links"
+    #             WHERE event_id=%(event)s;""",
+    #             {"event": event_id},
+    #         )
+
+    #         return await res.fetchone()
+
+    async def parse_brucebase_url(self, url: str, pool: AsyncConnectionPool) -> str:
+        """Use provided Brucebase URL to get event_id."""
+        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
+            url = re.sub(r"(http\:\/\/)?brucebase.wikidot.com", "", url)
+
+            res = await cur.execute(
+                """SELECT e.event_id AS id FROM events e WHERE brucebase_url=%(url)s""",
+                {"url": url},
+            )
+
+            return await res.fetchone()
+
+    async def setlist_embed(
         self,
         event: dict,
         ctx: commands.Context,
@@ -168,7 +225,6 @@ class Setlist(commands.Cog):
     ) -> discord.File | discord.Embed:
         """Create embed."""
         venue_url = await utils.format_link(event["venue_url"], event["venue_loc"])
-        releases = []
 
         description = [f"**Venue:** {venue_url}"]
 
@@ -178,34 +234,16 @@ class Setlist(commands.Cog):
         if event["event_date_note"]:
             description.append(f"**Notes:**\n- {event['event_date_note']}")
 
-        nugs_release = await self.get_nugs_release(
-            event_id=event["event_id"],
-            pool=pool,
-        )
-
-        archive = await self.get_archive_links(event_id=event["event_id"], pool=pool)
-
-        if nugs_release:
-            if "nugs" in nugs_release["url"]:
-                source = "Nugs"
-            elif "livephish" in nugs_release["url"]:
-                source = "LivePhish"
-
-            releases.append(f"[{source}]({nugs_release['url']})")
-
-        if archive:
-            releases.append(f"[Archive.org]({archive['url']})")
+        releases = await self.get_releases(event_id=event["event_id"], pool=pool)
 
         if len(releases) > 0:
-            description.append(f"**Releases:** {", ".join(releases)}")
-
-        date = datetime.datetime.strftime(event["event_date"], "%Y-%m-%d [%a]")
+            description.append(f"**Releases:** {', '.join(releases)}")
 
         embed = await bot_embed.create_embed(
             ctx=ctx,
-            title=date,
+            title=event["event_date"].strftime("%Y-%m-%d [%a]"),
             description="\n".join(description),
-            url=f"http://brucebase.wikidot.com{event["brucebase_url"]}",
+            url=f"http://brucebase.wikidot.com{event['brucebase_url']}",
         )
 
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
@@ -228,33 +266,38 @@ class Setlist(commands.Cog):
             notes = await self.get_event_notes(event_id=event["event_id"], cur=cur)
 
         if len(setlist) == 0:
-            embed.add_field(
-                name="Setlist:",
-                value="_No Set Details Known_",
-                inline=False,
-            )
+            if event["event_date"] > datetime.datetime.now().date():
+                embed.add_field(
+                    name="Setlist:",
+                    value="_Event Hasn't Happened Yet_",
+                    inline=False,
+                )
+            else:
+                embed.add_field(
+                    name="Setlist:",
+                    value="_No Set Details Known_",
+                    inline=False,
+                )
         else:
             for set_n in setlist:
                 match event["setlist_certainty"]:
                     case "Incomplete":
-                        set_name = (
-                            f"{set_n["set_name"]} _(Setlist Possibly Incomplete)_:"
-                        )
+                        set_name = f"{set_n['set_name']} _(Incomplete)_:"
                     case _:
-                        set_name = f"{set_n["set_name"]}:"
+                        set_name = f"{set_n['set_name']}:"
 
                 embed.add_field(
                     name=set_name,
-                    value=f"> {set_n["setlist"]}",
+                    value=f"{set_n['setlist']}",
                     inline=False,
                 )
 
         if len(notes) > 0:
-            embed.add_field(name="", value="-" * 48, inline=False)
+            # embed.add_field(name="", value="-" * 48, inline=False)
 
             embed.add_field(
                 name="Setlist Notes:",
-                value=f"```{re.sub("''", "'", "\n".join(notes))}```",
+                value=f"{re.sub("''", "'", '\n'.join(notes))}",
             )
 
         event_info = {
@@ -275,6 +318,17 @@ class Setlist(commands.Cog):
 
         return embed
 
+    @commands.command(name="latest", aliases=["last"])
+    async def get_latest(
+        self,
+        ctx: commands.Context,
+    ) -> None:
+        """Get most recent show."""
+        async with await db.create_pool() as pool:
+            date = await self.get_latest_setlist(pool=pool)
+
+            await ctx.invoke(self.bot.get_command("setlist"), date_query=date)
+
     @commands.command(name="setlist", aliases=["sl"], usage="<date>")
     async def get_setlists(
         self,
@@ -289,36 +343,48 @@ class Setlist(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            if date_query == "":
-                date_query = await self.get_latest_setlist(pool=pool)
+            if re.search(r"\/(gig|rehearsal|nogig|recording):", date_query):
+                event = await self.parse_brucebase_url(date_query, pool)
 
-            if "http://brucebase.wikidot.com" in date_query:
-                events = await self.parse_brucebase_url(date_query, pool)
+                if event:
+                    events = await self.get_event_by_id(event["id"], pool)
+
+            elif date_query == "":
+                event = await self.get_latest_setlist(pool=pool)
+
+                if event:
+                    events = await self.get_event_by_id(event["id"], pool)
+
+            elif re.search(r"\d{8}-\d{2}", date_query):  # databruce_id
+                events = await self.get_event_by_id(date_query, pool)
+
             else:
                 date = await utils.date_parsing(date_query)
 
                 try:
-                    date.strftime("%Y-%m-%d")
-                except AttributeError:
+                    events = await self.get_events_by_exact_date(
+                        date=date.strftime("%Y-%m-%d"),
+                        pool=pool,
+                    )
+                except (ParserError, AttributeError):
                     embed = discord.Embed(
                         title="Incorrect Date Format",
-                        description=f"Failed to parse given date: `{date}`",
+                        description=f"Failed to parse given date: `{date_query}`",
                     )
+
                     await ctx.send(embed=embed)
                     return
 
-                events = await self.get_events_by_exact_date(
-                    date=date.strftime("%Y-%m-%d"),
-                    pool=pool,
-                )
-
-            if events:
+            try:
                 if len(events) == 1:
-                    event = events[0]
-                    embed = await self.setlist_embed(event=event, ctx=ctx, pool=pool)
+                    embed = await self.setlist_embed(
+                        event=events[0],
+                        ctx=ctx,
+                        pool=pool,
+                    )
 
                     await ctx.send(embed=embed)
-                elif len(events) > 1:
+                else:
                     menu = await viewmenu.create_view_menu(
                         ctx=ctx,
                         style="Event $ of &",
@@ -332,11 +398,12 @@ class Setlist(commands.Cog):
                     menu.add_pages(embeds)
 
                     await menu.start()
-            else:
+            except UnboundLocalError:
                 embed = await bot_embed.not_found_embed(
                     command=self.__class__.__name__,
                     message=date_query,
                 )
+
                 await ctx.send(embed=embed)
 
 

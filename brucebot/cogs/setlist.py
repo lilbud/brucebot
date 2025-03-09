@@ -101,6 +101,7 @@ class Setlist(commands.Cog):
                 """
                     SELECT
                         e.*,
+                        coalesce(e.early_late, '') AS early_late,
                         r.name AS run,
                         'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
                         v.formatted_loc AS venue_loc,
@@ -129,6 +130,7 @@ class Setlist(commands.Cog):
                 """
                     SELECT
                         e.*,
+                        coalesce(e.early_late, '') AS early_late,
                         r.name AS run,
                         'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
                         v.formatted_loc AS venue_loc,
@@ -241,7 +243,7 @@ class Setlist(commands.Cog):
 
         embed = await bot_embed.create_embed(
             ctx=ctx,
-            title=event["event_date"].strftime("%Y-%m-%d [%a]"),
+            title=f"{event['event_date'].strftime('%Y-%m-%d [%a]')} {event['early_late']}",
             description="\n".join(description),
             url=f"http://brucebase.wikidot.com{event['brucebase_url']}",
         )

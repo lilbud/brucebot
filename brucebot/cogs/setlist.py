@@ -181,7 +181,7 @@ class Setlist(commands.Cog):
                     LEFT JOIN archive_links a USING(event_id)
                     LEFT JOIN "nugs_releases" n USING(event_id)
                     WHERE e.event_id=%(event)s
-                )
+                ) t
                 """,
                 {"event": event_id},
             )

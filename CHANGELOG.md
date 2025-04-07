@@ -40,3 +40,5 @@
     - The BB URL option was part of the bot, but until now hasn't worked as intended. It would simply pull the date from the url, then continue as usual. So, if there were multiple events, it would get all of them, rather than just the single event for that url.
     - The event_id would simply be parsed as a date and go from there. Which works in the case of single event days, but is pointless for multi-event days.
   - releases are now gotten in one function, rather than one for nugs and archive. Just makes things cleaner.
+- 2025-04-07 - updated setlist table in the database, so had to fix a ton of stuff. Changed it to use song id rather than brucebase_url. Makes for easier joins and whatnot.
+  - updated: song, album, stats

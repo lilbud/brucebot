@@ -48,13 +48,13 @@ class Album(commands.Cog):
 
         embed.add_field(
             name="Least Played",
-            value=f"{least_played_url} ({album_stats["least"]['times_played']})",
+            value=f"{least_played_url} ({album_stats['least']['times_played']})",
             inline=False,
         )
 
         embed.add_field(
             name="Most Played",
-            value=f"{most_played_url} ({album_stats["most"]['times_played']})",
+            value=f"{most_played_url} ({album_stats['most']['times_played']})",
             inline=True,
         )
 
@@ -74,7 +74,7 @@ class Album(commands.Cog):
                 s.song_name,
                 s.num_plays_public AS times_played
             FROM "release_tracks" r
-            LEFT JOIN "songs" s ON s.brucebase_url = r.song_id
+            LEFT JOIN "songs" s ON s.id = r.song_id
             WHERE r.release_id = %(id)s
             ORDER BY s.num_plays_public ASC
             """,
@@ -130,9 +130,12 @@ class Album(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 album = await self.album_search(album_query, cur)
 
                 if album:

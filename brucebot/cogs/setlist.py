@@ -190,23 +190,6 @@ class Setlist(commands.Cog):
 
             return [rel["links"] for rel in await res.fetchall()]
 
-    # async def get_archive_links(
-    #     self,
-    #     event_id: str,
-    #     pool: AsyncConnectionPool,
-    # ) -> dict:
-    #     """Get links to archive.org if i uploaded a tape."""
-    #     async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-    #         res = await cur.execute(
-    #             """SELECT
-    #                 archive_url AS url
-    #             FROM "archive_links"
-    #             WHERE event_id=%(event)s;""",
-    #             {"event": event_id},
-    #         )
-
-    #         return await res.fetchone()
-
     async def parse_brucebase_url(self, url: str, pool: AsyncConnectionPool) -> str:
         """Use provided Brucebase URL to get event_id."""
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:

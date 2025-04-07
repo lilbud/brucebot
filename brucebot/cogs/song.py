@@ -59,11 +59,12 @@ class Song(commands.Cog):
 
         return await res.fetchall()
 
-    async def get_song_info(self, url: str, cur: psycopg.AsyncCursor) -> dict:
+    async def get_song_info(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
         """With provided URL from fts, get info on song."""
         res = await cur.execute(
             """
             SELECT
+                s.id,
                 s.song_name,
                 s.brucebase_url,
                 e.event_id AS first_event,
@@ -85,10 +86,10 @@ class Song(commands.Cog):
             FROM "songs" s
             LEFT JOIN "events" e ON e.event_id = s.first_played
             LEFT JOIN "events" e1 ON e1.event_id = s.last_played
-            LEFT JOIN "songs_after_release" s1 ON s1.song_id = s.brucebase_url
-            WHERE s.brucebase_url = %(url)s
+            LEFT JOIN "songs_after_release" s1 ON s1.song_id = s.id
+            WHERE s.id = %(song_id)s
             """,  # noqa: E501
-            {"url": url},
+            {"song_id": song_id},
         )
 
         return await res.fetchone()
@@ -165,7 +166,7 @@ class Song(commands.Cog):
 
         embed.add_field(
             name="Performances:",
-            value=f"{song["num_plays_public"]} ({song["num_post_release"]})",
+            value=f"{song['num_plays_public']} ({song['num_post_release']})",
         )
 
         if song["num_plays_public"] > 0:
@@ -181,7 +182,7 @@ class Song(commands.Cog):
 
             last_date_value = await utils.format_link(
                 url=f"http://brucebase.wikidot.com{song['last_url']}",
-                text=f"{song["last_date"]}",
+                text=f"{song['last_date']}",
             )
 
             embed.add_field(
@@ -196,11 +197,11 @@ class Song(commands.Cog):
 
             embed.add_field(name="Opener:", value=song["opener"])
             embed.add_field(name="Closer:", value=song["closer"])
-            embed.add_field(name="Frequency:", value=f"{song["frequency"]}%")
+            embed.add_field(name="Frequency:", value=f"{song['frequency']}%")
 
             embed.add_field(
                 name="Snippet:",
-                value=f"{song["num_plays_snippet"]}",
+                value=f"{song['num_plays_snippet']}",
             )
 
         return embed
@@ -214,6 +215,7 @@ class Song(commands.Cog):
         res = await cur.execute(
             """
             SELECT
+                s.id,
                 s.brucebase_url,
                 rank,
                 similarity
@@ -246,9 +248,12 @@ class Song(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 song = await self.song_find_fuzzy(argument, cur)
 
                 if song:
@@ -291,9 +296,12 @@ class Song(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 song = await self.song_find_fuzzy(song_query, cur)
 
                 if song:
@@ -340,9 +348,12 @@ class Song(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 song = await self.song_find_fuzzy(song_query, cur)
 
                 if song:
@@ -354,7 +365,7 @@ class Song(commands.Cog):
                     )
 
                     song_info = await self.get_song_info(
-                        url=song["brucebase_url"],
+                        song_id=song["id"],
                         cur=cur,
                     )
 
@@ -397,9 +408,12 @@ class Song(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 song = await self.song_find_fuzzy(song_query, cur)
 
                 if song:
@@ -432,7 +446,7 @@ class Song(commands.Cog):
 
                     embed = await bot_embed.create_embed(
                         ctx=ctx,
-                        title=f"{song_info["song_name"]} (snippet)",
+                        title=f"{song_info['song_name']} (snippet)",
                     )
 
                     if release:
@@ -454,11 +468,11 @@ class Song(commands.Cog):
                     if snippet["count"] > 0:
                         embed.add_field(
                             name="First:",
-                            value=f"[{snippet["first"]}](<http://brucebase.wikidot.com{snippet['first_url']}>)",
+                            value=f"[{snippet['first']}](<http://brucebase.wikidot.com{snippet['first_url']}>)",
                         )
                         embed.add_field(
                             name="Last:",
-                            value=f"[{snippet["last"]}](<http://brucebase.wikidot.com{snippet['last_url']}>)",
+                            value=f"[{snippet['last']}](<http://brucebase.wikidot.com{snippet['last_url']}>)",
                         )
 
                     await ctx.send(embed=embed)

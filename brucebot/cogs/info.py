@@ -28,7 +28,7 @@ class Info(commands.Cog):
                 FROM
                     events e
                 LEFT JOIN setlists s ON s.event_id = e.event_id
-                LEFT JOIN songs s1 ON s1.brucebase_url = s.song_id
+                LEFT JOIN songs s1 ON s1.id = s.song_id
                 LEFT JOIN venues v ON v.id = e.venue_id
                 LEFT JOIN relations r ON r.first_appearance = e.event_id
                 LEFT JOIN bands b ON b.first_appearance = e.event_id
@@ -38,7 +38,7 @@ class Info(commands.Cog):
             counts = await res.fetchone()
 
             return [
-                f"- **{k.replace("_", " ").title()}** - _{v}_"
+                f"- **{k.replace('_', ' ').title()}** - _{v}_"
                 for k, v in counts.items()
             ]
 

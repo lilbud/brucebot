@@ -1,3 +1,4 @@
+import ftfy
 import psycopg
 from cogs.bot_stuff import bot_embed, db, viewmenu
 from discord.ext import commands
@@ -12,28 +13,30 @@ class Stats(commands.Cog):
         self.bot = bot
         self.description = "Stats about songs Bruce has played live."
 
-    async def song_fuzzy_search(
+    async def song_find_fuzzy(
         self,
         query: str,
         cur: psycopg.AsyncCursor,
-    ) -> list[dict]:
+    ) -> dict:
         """Fuzzy search SONGS table using full text search."""
         res = await cur.execute(
             """
             SELECT
+                s.id,
                 s.brucebase_url,
                 s.song_name,
                 rank,
                 similarity
             FROM
                 "songs" s,
-                plainto_tsquery('english', %(query)s) query,
+                plainto_tsquery('simple', %(query)s) query,
                 ts_rank(fts, query) rank,
-                SIMILARITY(%(query)s, coalesce(short_name, song_name)) similarity
-            WHERE query @@ fts AND similarity >= 0.45 AND s.num_plays_public > 0
-            ORDER BY similarity DESC, rank DESC
-            """,
-            {"query": query},
+                SIMILARITY(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
+            WHERE query @@ fts
+            AND similarity >= 0.0415
+            ORDER BY similarity DESC, rank DESC;
+            """,  # noqa: E501
+            {"query": ftfy.fix_text(query)},
         )
 
         return await res.fetchall()
@@ -52,13 +55,13 @@ class Stats(commands.Cog):
                 count(*) AS total
             FROM "setlists" s
             LEFT JOIN "events" e USING (event_id)
-            LEFT JOIN "songs" s1 ON s1.brucebase_url = s.song_id
+            LEFT JOIN "songs" s1 ON s1.id = s.song_id
             WHERE s.position = %(position)s
             AND e.tour_id = %(tour_id)s
-            AND s.set_name = ANY(ARRAY['Show'::text,'Set 1'::text,'Set 2'::text,'Encore'::text])
+            AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
             GROUP BY s1.song_name, s.position
             ORDER BY count(*) DESC
-            """,  # noqa: E501
+            """,
             {"position": position, "tour_id": tour_id},
         )
 
@@ -116,19 +119,22 @@ class Stats(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
-                songs = await self.song_fuzzy_search(query=song, cur=cur)
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
+                songs = await self.song_find_fuzzy(query=song, cur=cur)
 
                 if len(songs) > 0:
                     res = await cur.execute(
                         """SELECT o.* FROM "openers_closers" o LEFT JOIN "setlists" s
                             ON s.position = o.position WHERE o.song_id=%s
                             AND o.position LIKE '%%Opener'
-                            GROUP BY o.song_id, o.position, o.num
+                            GROUP BY o.song_id, o.position, o.count
                             ORDER BY min(s.song_num::int) ASC;""",
-                        (songs[0]["brucebase_url"],),
+                        (songs[0]["id"],),
                     )
 
                     openers_list = await res.fetchall()
@@ -137,13 +143,13 @@ class Stats(commands.Cog):
                         embed = await bot_embed.create_embed(
                             ctx,
                             title=songs[0]["song_name"],
-                            url=f"http://brucebase.wikidot.com/song:{songs[0]["brucebase_url"]}",
+                            url=f"http://brucebase.wikidot.com/song:{songs[0]['brucebase_url']}",
                         )
 
                         for i in openers_list:
                             embed.add_field(
                                 name=i["position"],
-                                value=i["num"],
+                                value=i["count"],
                                 inline=False,
                             )
 
@@ -174,19 +180,22 @@ class Stats(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
-                songs = await self.song_fuzzy_search(query=song, cur=cur)
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
+                songs = await self.song_find_fuzzy(query=song, cur=cur)
 
                 if songs != []:
                     res = await cur.execute(
                         """SELECT o.* FROM "openers_closers" o LEFT JOIN "setlists" s
                             ON s.position = o.position WHERE o.song_id=%s
                             AND o.position LIKE '%%Closer'
-                            GROUP BY o.song_id, o.position, o.num
+                            GROUP BY o.song_id, o.position, o.count
                             ORDER BY min(s.song_num::int) ASC;""",
-                        (songs[0]["brucebase_url"],),
+                        (songs[0]["id"],),
                     )
 
                     closers_list = await res.fetchall()
@@ -195,13 +204,13 @@ class Stats(commands.Cog):
                         embed = await bot_embed.create_embed(
                             ctx,
                             title=songs[0]["song_name"],
-                            url=f"http://brucebase.wikidot.com/song:{songs[0]["brucebase_url"]}",
+                            url=f"http://brucebase.wikidot.com/song:{songs[0]['brucebase_url']}",
                         )
 
                         for i in closers_list:
                             embed.add_field(
                                 name=i["position"],
-                                value=i["num"],
+                                value=i["count"],
                                 inline=False,
                             )
 
@@ -232,9 +241,12 @@ class Stats(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 tour = await self.find_tour(cur, tour_query)
 
                 print(tour)
@@ -247,7 +259,7 @@ class Stats(commands.Cog):
                     )
 
                     data = [
-                        f"{index}. **{row["song_name"]}** - *{row["total"]} time(s)*"
+                        f"{index}. **{row['song_name']}** - *{row['total']} time(s)*"
                         for index, row in enumerate(stats)
                     ]
                     await viewmenu.stats_menu(
@@ -275,9 +287,12 @@ class Stats(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 tour = await self.find_tour(cur, tour_query)
 
                 if tour:
@@ -288,7 +303,7 @@ class Stats(commands.Cog):
                     )
 
                     data = [
-                        f"{index}. **{row["song_name"]}** - *{row["total"]} time(s)*"
+                        f"{index}. **{row['song_name']}** - *{row['total']} time(s)*"
                         for index, row in enumerate(stats)
                     ]
                     await viewmenu.stats_menu(
@@ -316,9 +331,12 @@ class Stats(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 res = await cur.execute(
                     """
                     SELECT
@@ -327,7 +345,7 @@ class Stats(commands.Cog):
                         count(*) AS total
                     FROM "setlists" s
                     LEFT JOIN "events" e USING (event_id)
-                    LEFT JOIN "songs" s1 ON s1.brucebase_url = s.song_id
+                    LEFT JOIN "songs" s1 ON s1.id = s.song_id
                     WHERE s.position = 'Show Opener'
                     AND to_char(e.event_date, 'YYYY') = %s
                     GROUP BY s1.song_name, s.position
@@ -340,7 +358,7 @@ class Stats(commands.Cog):
 
                 if stats:
                     data = [
-                        f"{index}. **{row["song_name"]}** - *{row["total"]} time(s)*"
+                        f"{index}. **{row['song_name']}** - *{row['total']} time(s)*"
                         for index, row in enumerate(stats)
                     ]
                     await viewmenu.stats_menu(
@@ -368,9 +386,12 @@ class Stats(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 res = await cur.execute(
                     """
                     SELECT
@@ -379,7 +400,7 @@ class Stats(commands.Cog):
                         count(*) AS total
                     FROM "setlists" s
                     LEFT JOIN "events" e USING (event_id)
-                    LEFT JOIN "songs" s1 ON s1.brucebase_url = s.song_id
+                    LEFT JOIN "songs" s1 ON s1.id = s.song_id
                     WHERE s.position = 'Show Closer'
                         AND to_char(e.event_date, 'YYYY') = %s
                     GROUP BY s1.song_name, s.position
@@ -392,7 +413,7 @@ class Stats(commands.Cog):
 
                 if stats:
                     data = [
-                        f"{index}. **{row["song_name"]}** - *{row["total"]} time(s)*"
+                        f"{index}. **{row['song_name']}** - *{row['total']} time(s)*"
                         for index, row in enumerate(stats)
                     ]
                     await viewmenu.stats_menu(

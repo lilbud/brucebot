@@ -1,4 +1,5 @@
 import traceback
+from typing import Literal, Optional
 
 import discord
 from cogs.bot_stuff import bot_embed
@@ -91,19 +92,57 @@ class Admin(commands.Cog):
 
         await ctx.send("Cleared Commands")
 
+    # @commands.command(hidden=True)
+    # @commands.is_owner()
+    # async def sync(self, ctx: commands.Context) -> None:
+    #     """Sync commands."""
+    #     ctx.bot.tree.clear_commands(guild=None)
+    #     guilds = [735698850802565171, 363116664558059521, 968567196169146419]
+
+    #     for guild in guilds:
+    #         ctx.bot.tree.copy_global_to(guild=discord.Object(id=guild))
+    #         synced = await ctx.bot.tree.sync(guild=discord.Object(id=guild))
+
+    #     await ctx.send(f"Cleared tree and synced {len(synced)} commands globally")
+
     @commands.command(hidden=True)
+    @commands.guild_only()
     @commands.is_owner()
-    async def sync(self, ctx: commands.Context) -> None:
+    async def sync(
+        self,
+        ctx: commands.Context,
+        guilds: commands.Greedy[discord.Object],
+        spec: Optional[Literal["~", "*", "^"]] = None,  # noqa: FA100
+    ) -> None:
         """Sync commands."""
-        ctx.bot.tree.clear_commands(guild=None)
-        guilds = [735698850802565171, 363116664558059521, 968567196169146419]
+        if not guilds:
+            if spec == "~":
+                synced = await ctx.bot.tree.sync(guild=ctx.guild)
+            elif spec == "*":
+                ctx.bot.tree.copy_global_to(guild=ctx.guild)
+                synced = await ctx.bot.tree.sync(guild=ctx.guild)
+            elif spec == "^":
+                ctx.bot.tree.clear_commands(guild=ctx.guild)
+                await ctx.bot.tree.sync(guild=ctx.guild)
+                synced = []
+            else:
+                synced = await ctx.bot.tree.sync()
 
-        ctx.bot.tree.copy_global_to(guild=TESTING)
+            await ctx.send(
+                f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}",
+            )
+            return
 
+        ret = 0
         for guild in guilds:
-            synced = await ctx.bot.tree.sync(guild=discord.Object(id=guild))
+            try:
+                await ctx.bot.tree.sync(guild=guild)
+            except discord.HTTPException:
+                pass
+            else:
+                ret += 1
 
-        await ctx.send(f"Cleared tree and synced {len(synced)} commands globally")
+        await ctx.send(f"Synced the tree to {ret}/{len(guilds)}.")
 
 
 async def setup(bot: commands.Bot) -> None:

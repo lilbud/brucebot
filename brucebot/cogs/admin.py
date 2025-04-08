@@ -5,8 +5,8 @@ from cogs.bot_stuff import bot_embed
 from discord.ext import commands
 
 TESTING = discord.Object(id=735698850802565171)
-BRUCE = discord.Object(id=735698850802565171)
-SNAKES = discord.Object(id=735698850802565171)
+BRUCE = discord.Object(id=363116664558059521)
+SNAKES = discord.Object(id=968567196169146419)
 
 
 class Admin(commands.Cog):
@@ -96,8 +96,12 @@ class Admin(commands.Cog):
     async def sync(self, ctx: commands.Context) -> None:
         """Sync commands."""
         ctx.bot.tree.clear_commands(guild=None)
-        ctx.bot.tree.copy_global_to(guild=TESTING)
-        synced = await ctx.bot.tree.sync(guild=None)
+        guilds = [735698850802565171, 363116664558059521, 968567196169146419]
+
+        await ctx.bot.tree.copy_global_to(guild=TESTING)
+
+        for guild in guilds:
+            synced = await ctx.bot.tree.sync(guild=discord.Object(id=guild))
 
         await ctx.send(f"Cleared tree and synced {len(synced)} commands globally")
 

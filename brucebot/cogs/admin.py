@@ -4,7 +4,9 @@ import discord
 from cogs.bot_stuff import bot_embed
 from discord.ext import commands
 
-MY_GUILD = discord.Object(id=735698850802565171)  # replace with your guild id
+TESTING = discord.Object(id=735698850802565171)
+BRUCE = discord.Object(id=735698850802565171)
+SNAKES = discord.Object(id=735698850802565171)
 
 
 class Admin(commands.Cog):
@@ -93,9 +95,15 @@ class Admin(commands.Cog):
     @commands.is_owner()
     async def sync(self, ctx: commands.Context) -> None:
         """Sync commands."""
-        self.bot.tree.copy_global_to(guild=ctx.guild)
+        servers = [
+            discord.Object(id=363116664558059521),  # brucecord
+            discord.Object(id=735698850802565171),  # testing
+            discord.Object(id=968567196169146419),  # snakes
+        ]
 
-        synced = await ctx.bot.tree.sync(guild=MY_GUILD)
+        ctx.bot.tree.copy_global_to(guild=TESTING)
+        synced = await ctx.bot.tree.sync(guilds=servers)
+
         await ctx.send(f"Synced {len(synced)} commands globally")
 
 

@@ -1,6 +1,6 @@
 import ftfy
 import psycopg
-from cogs.bot_stuff import bot_embed, db, viewmenu
+from cogs.bot_stuff import bot_embed, db, utils, viewmenu
 from discord.ext import commands
 from psycopg.rows import dict_row
 
@@ -88,9 +88,8 @@ class Stats(commands.Cog):
 
         return await res.fetchone()
 
-    @commands.group(
+    @commands.hybrid_group(
         name="opener",
-        usage="[subcommand]",
         brief="Commands for show/set opener stats.",
     )
     async def opener(self, ctx: commands.Context) -> None:
@@ -98,9 +97,8 @@ class Stats(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
-    @commands.group(
+    @commands.hybrid_group(
         name="closer",
-        usage="[subcommand]",
         brief="Commands for show/set closer stats.",
     )
     async def closer(self, ctx: commands.Context) -> None:
@@ -115,7 +113,7 @@ class Stats(commands.Cog):
         *,
         song: str,
     ) -> None:
-        """Stats on when a song has closed a set/show."""
+        """Stats on when a song has opened a set/show."""
         async with await db.create_pool() as pool:
             await ctx.typing()
 
@@ -125,7 +123,9 @@ class Stats(commands.Cog):
                     row_factory=dict_row,
                 ) as cur,
             ):
-                songs = await self.song_find_fuzzy(query=song, cur=cur)
+                songs = await utils.song_find_fuzzy(query=song, cur=cur)
+
+                print(songs)
 
                 if len(songs) > 0:
                     res = await cur.execute(
@@ -134,7 +134,7 @@ class Stats(commands.Cog):
                             AND o.position LIKE '%%Opener'
                             GROUP BY o.song_id, o.position, o.count
                             ORDER BY min(s.song_num::int) ASC;""",
-                        (songs[0]["id"],),
+                        (songs["id"],),
                     )
 
                     openers_list = await res.fetchall()
@@ -142,8 +142,8 @@ class Stats(commands.Cog):
                     if len(openers_list) > 0:
                         embed = await bot_embed.create_embed(
                             ctx,
-                            title=songs[0]["song_name"],
-                            url=f"http://brucebase.wikidot.com/song:{songs[0]['brucebase_url']}",
+                            title=songs["song_name"],
+                            url=f"http://brucebase.wikidot.com{songs['brucebase_url']}",
                         )
 
                         for i in openers_list:
@@ -186,7 +186,7 @@ class Stats(commands.Cog):
                     row_factory=dict_row,
                 ) as cur,
             ):
-                songs = await self.song_find_fuzzy(query=song, cur=cur)
+                songs = await utils.song_find_fuzzy(query=song, cur=cur)
 
                 if songs != []:
                     res = await cur.execute(
@@ -195,7 +195,7 @@ class Stats(commands.Cog):
                             AND o.position LIKE '%%Closer'
                             GROUP BY o.song_id, o.position, o.count
                             ORDER BY min(s.song_num::int) ASC;""",
-                        (songs[0]["id"],),
+                        (songs["id"],),
                     )
 
                     closers_list = await res.fetchall()
@@ -203,8 +203,8 @@ class Stats(commands.Cog):
                     if len(closers_list) > 0:
                         embed = await bot_embed.create_embed(
                             ctx,
-                            title=songs[0]["song_name"],
-                            url=f"http://brucebase.wikidot.com/song:{songs[0]['brucebase_url']}",
+                            title=songs["song_name"],
+                            url=f"http://brucebase.wikidot.com{songs['brucebase_url']}",
                         )
 
                         for i in closers_list:

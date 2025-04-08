@@ -14,8 +14,8 @@ class Song(commands.Cog):
         self.bot = bot
         self.description = "Find songs that Bruce has played live."
 
-    async def get_count_by_year(self, song_id: str, cur: psycopg.AsyncCursor) -> dict:
-        """Use given url to count how many times a song has appeared by year."""
+    async def get_count_by_year(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
+        """Use given id to count how many times a song has appeared by year."""
         res = await cur.execute(
             """
             SELECT
@@ -24,7 +24,7 @@ class Song(commands.Cog):
             from setlists s
             LEFT JOIN events e ON e.event_id = s.event_id
             WHERE s.song_id = %(song)s
-            AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
+            AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
             GROUP BY to_char(e.event_date, 'YYYY')
             ORDER BY to_char(e.event_date, 'YYYY')
             """,
@@ -33,7 +33,7 @@ class Song(commands.Cog):
 
         return await res.fetchall()
 
-    async def get_count_by_tour(self, song_id: str, cur: psycopg.AsyncCursor) -> dict:
+    async def get_count_by_tour(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
         """Use given url to count how many times a song has appeared by year."""
         res = await cur.execute(
             """
@@ -49,8 +49,8 @@ class Song(commands.Cog):
             LEFT JOIN tours t ON t.id = e.tour_id
             WHERE
                 s.song_id = %(song)s
-                AND t.id <> ALL (ARRAY[43, 20, 23])
-                AND s.set_name = ANY (ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
+                AND t.id <> ALL(ARRAY[43, 20, 23])
+                AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
             GROUP BY t.tour_name, t.start_year, t.end_year
             ORDER BY count(*) DESC
             """,  # noqa: E501
@@ -96,14 +96,14 @@ class Song(commands.Cog):
 
     async def get_first_release(
         self,
-        song: str,
+        song_id: int,
         cur: psycopg.AsyncCursor,
     ) -> dict:
         """Get info on the first release of a given song."""
         res = await cur.execute(
             """SELECT * FROM "songs_first_release"
                 WHERE song_id=%s ORDER BY release_date::date ASC;""",
-            (song,),
+            (song_id,),
         )
 
         return await res.fetchone()
@@ -206,136 +206,13 @@ class Song(commands.Cog):
 
         return embed
 
-    async def song_find_fuzzy(
-        self,
-        query: str,
-        cur: psycopg.AsyncCursor,
-    ) -> dict:
-        """Fuzzy search SONGS table using full text search."""
-        res = await cur.execute(
-            """
-            SELECT
-                s.id,
-                s.brucebase_url,
-                rank,
-                similarity
-            FROM
-                "songs" s,
-                plainto_tsquery('simple', %(query)s) query,
-                ts_rank(fts, query) rank,
-                SIMILARITY(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
-            WHERE query @@ fts
-            AND similarity >= 0.0415
-            ORDER BY similarity DESC, rank DESC;
-            """,  # noqa: E501
-            {"query": ftfy.fix_text(query)},
-        )
-
-        return await res.fetchone()
-
-    @commands.command(name="songyear", aliases=["sy"], usage="<song>")
-    async def song_year_count(
-        self,
-        ctx: commands.Context,
-        *,
-        argument: str = "",
-    ) -> None:
-        """Search database by song and get year counts."""
-        if argument == "":
-            await ctx.send_help(ctx.command)
-            return
-
-        async with await db.create_pool() as pool:
-            await ctx.typing()
-
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                song = await self.song_find_fuzzy(argument, cur)
-
-                if song:
-                    song_info = await self.get_song_info(
-                        url=song["brucebase_url"],
-                        cur=cur,
-                    )
-
-                    year_stats = await self.get_count_by_year(
-                        song["brucebase_url"],
-                        cur,
-                    )
-
-                    menu = await viewmenu.create_dynamic_menu(
-                        ctx=ctx,
-                        page_counter="Page $/&",
-                        rows=12,
-                        title=f"Year Count For: {song_info['song_name']}",
-                    )
-
-                    for index, row in enumerate(year_stats, start=1):
-                        menu.add_row(f"{index}. **{row['year']}**: _{row['count']}_")
-
-                    await menu.start()
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command=self.__class__.__name__,
-                        message=argument,
-                    )
-                    await ctx.send(embed=embed)
-
-    @commands.command(name="songtour", aliases=["st"], usage="<song>")
-    async def song_tour_count(
-        self,
-        ctx: commands.Context,
-        *,
-        song_query: str,
-    ) -> None:
-        """Search database by song and get tour counts."""
-        async with await db.create_pool() as pool:
-            await ctx.typing()
-
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                song = await self.song_find_fuzzy(song_query, cur)
-
-                if song:
-                    song_info = await self.get_song_info(
-                        url=song["brucebase_url"],
-                        cur=cur,
-                    )
-
-                    tour_stats = await self.get_count_by_tour(
-                        song["brucebase_url"],
-                        cur,
-                    )
-
-                    menu = await viewmenu.create_dynamic_menu(
-                        ctx=ctx,
-                        page_counter="Page $/&",
-                        rows=12,
-                        title=f"Tour Count For: {song_info['song_name']}",
-                    )
-
-                    for index, row in enumerate(tour_stats, start=1):
-                        menu.add_row(
-                            f"{index}. _{row['years']}_: **{row['tour']}** - _{row['count']} time(s)_",  # noqa: E501
-                        )
-
-                    await menu.start()
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command=self.__class__.__name__,
-                        message=song_query,
-                    )
-                    await ctx.send(embed=embed)
-
-    @commands.command(name="song", aliases=["s"], usage="<song>")
+    @commands.hybrid_group(
+        name="song",
+        fallback="song",
+        aliases=["s"],
+        description="Get stats on a song",
+        usage="<song>",
+    )
     async def song_find(
         self,
         ctx: commands.Context,
@@ -343,7 +220,7 @@ class Song(commands.Cog):
         song_query: str,
     ) -> None:
         """Search database for song."""
-        song_query = await utils.clean_message(song_query)
+        song_query = ftfy.fix_text(song_query)
 
         async with await db.create_pool() as pool:
             await ctx.typing()
@@ -354,13 +231,13 @@ class Song(commands.Cog):
                     row_factory=dict_row,
                 ) as cur,
             ):
-                song = await self.song_find_fuzzy(song_query, cur)
+                song = await utils.song_find_fuzzy(song_query, cur)
 
                 if song:
                     view = discord.ui.View()
 
                     release = await self.get_first_release(
-                        song=song["brucebase_url"],
+                        song_id=song["id"],
                         cur=cur,
                     )
 
@@ -395,15 +272,21 @@ class Song(commands.Cog):
                     )
                     await ctx.send(embed=embed)
 
-    @commands.command(name="snippet", aliases=["snip"], usage="<song>")
-    async def snippet_find(
+    @song_find.command(
+        name="tour",
+        description="Get tour stats on a song",
+        usage="<song>",
+    )
+    async def song_tour_count(
         self,
         ctx: commands.Context,
         *,
-        song_query: str,
+        song_query: str = "",
     ) -> None:
-        """Search database for songs as snippets."""
-        song_query = await utils.clean_message(song_query)
+        """Search database by song and get tour counts."""
+        if song_query == "":
+            await ctx.send_help(ctx.command)
+            return
 
         async with await db.create_pool() as pool:
             await ctx.typing()
@@ -414,7 +297,140 @@ class Song(commands.Cog):
                     row_factory=dict_row,
                 ) as cur,
             ):
-                song = await self.song_find_fuzzy(song_query, cur)
+                song = await utils.song_find_fuzzy(song_query, cur)
+
+                if song:
+                    song_info = await self.get_song_info(
+                        song_id=song["id"],
+                        cur=cur,
+                    )
+
+                    tour_stats = await self.get_count_by_tour(
+                        song["id"],
+                        cur,
+                    )
+
+                    menu = await viewmenu.create_dynamic_menu(
+                        ctx=ctx,
+                        page_counter="Page $/&",
+                        rows=12,
+                        title=f"Tour Count For: {song_info['song_name']}",
+                    )
+
+                    for index, row in enumerate(tour_stats, start=1):
+                        menu.add_row(
+                            f"{index}. _{row['years']}_: **{row['tour']}** - _{row['count']} time(s)_",  # noqa: E501
+                        )
+
+                    await menu.start()
+                else:
+                    embed = await bot_embed.not_found_embed(
+                        command=self.__class__.__name__,
+                        message=song_query,
+                    )
+                    await ctx.send(embed=embed)
+
+    @song_find.command(
+        name="year",
+        description="Get year stats on a song",
+        usage="<song>",
+    )
+    async def song_year_count(
+        self,
+        ctx: commands.Context,
+        *,
+        song_query: str = "",
+    ) -> None:
+        """Search database by song and get year counts."""
+        if song_query == "":
+            await ctx.send_help(ctx.command)
+            return
+
+        async with await db.create_pool() as pool:
+            await ctx.typing()
+
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
+                song = await utils.song_find_fuzzy(song_query, cur)
+
+                if song:
+                    song_info = await self.get_song_info(
+                        song_id=song["id"],
+                        cur=cur,
+                    )
+
+                    year_stats = await self.get_count_by_year(
+                        song["id"],
+                        cur,
+                    )
+
+                    menu = await viewmenu.create_dynamic_menu(
+                        ctx=ctx,
+                        page_counter="Page $/&",
+                        rows=12,
+                        title=f"Year Count For: {song_info['song_name']}",
+                    )
+
+                    for index, row in enumerate(year_stats, start=1):
+                        menu.add_row(f"{index}. **{row['year']}**: _{row['count']}_")
+
+                    await menu.start()
+                else:
+                    embed = await bot_embed.not_found_embed(
+                        command=self.__class__.__name__,
+                        message=song_query,
+                    )
+                    await ctx.send(embed=embed)
+
+    async def snippet_song_count(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
+        """Get count of songs that a snippet was included as part of."""
+        res = await cur.execute(
+            """
+            SELECT
+                distinct s1.song_name,
+                s1.brucebase_url AS url,
+                count(s1.id) AS count
+            FROM snippets sn
+            LEFT JOIN setlists s ON s.id = sn.setlist_song_id
+            LEFT JOIN songs s1 ON s1.id = s.song_id
+            WHERE sn.snippet_id = %(song_id)s
+            GROUP BY s1.song_name, s1.brucebase_url
+            ORDER BY count(s1.id) DESC
+            """,
+            {"song_id": song_id},
+        )
+
+        return await res.fetchall()
+
+    @commands.hybrid_command(
+        name="snippet",
+        aliases=["snip"],
+        description="Find stats on when a song was included in another",
+        usage="<song>",
+    )
+    async def snippet_find(
+        self,
+        ctx: commands.Context,
+        *,
+        song_query: str,
+    ) -> None:
+        """Search database for songs as snippets."""
+        song_query = ftfy.fix_text(song_query)
+
+        async with await db.create_pool() as pool:
+            await ctx.typing()
+
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
+                song = await utils.song_find_fuzzy(song_query, cur)
 
                 if song:
                     res = await cur.execute(
@@ -429,24 +445,30 @@ class Song(commands.Cog):
                         FROM snippets sn
                         LEFT JOIN events e ON e.event_id = sn.event_id
                         WHERE snippet_id = %s""",
-                        (song["brucebase_url"],),
+                        (song["id"],),
                     )
 
                     snippet = await res.fetchone()
 
+                    snippet_songs = await self.snippet_song_count(
+                        song_id=song["id"],
+                        cur=cur,
+                    )
+
                     release = await self.get_first_release(
-                        song=song["brucebase_url"],
+                        song_id=song["id"],
                         cur=cur,
                     )
 
                     song_info = await self.get_song_info(
-                        url=song["brucebase_url"],
+                        song_id=song["id"],
                         cur=cur,
                     )
 
                     embed = await bot_embed.create_embed(
                         ctx=ctx,
                         title=f"{song_info['song_name']} (snippet)",
+                        url=f"http://brucebase.wikidot.com{song['brucebase_url']}",
                     )
 
                     if release:
@@ -473,6 +495,18 @@ class Song(commands.Cog):
                         embed.add_field(
                             name="Last:",
                             value=f"[{snippet['last']}](<http://brucebase.wikidot.com{snippet['last_url']}>)",
+                        )
+
+                    if snippet_songs:
+                        songs = [
+                            f"[{song['song_name']}](http://brucebase.wikidot.com{song['url']}) - {song['count']} times(s)"
+                            for song in snippet_songs
+                        ]
+
+                        embed.add_field(
+                            name="Included During:",
+                            value=f"{'\n'.join(songs)}",
+                            inline=False,
                         )
 
                     await ctx.send(embed=embed)

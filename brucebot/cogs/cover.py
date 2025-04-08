@@ -36,7 +36,11 @@ class Cover(commands.Cog):
 
         await menu.start()
 
-    @commands.hybrid_command(name="cover", usage="<date>")
+    @commands.hybrid_command(
+        name="cover",
+        description="Get list of covers from my repo based on date.",
+        usage="<date>",
+    )
     async def get_covers(
         self,
         ctx: commands.Context,
@@ -47,9 +51,12 @@ class Cover(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 date = await utils.date_parsing(date_query)
 
                 try:

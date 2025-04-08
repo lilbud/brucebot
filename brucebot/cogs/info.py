@@ -42,7 +42,7 @@ class Info(commands.Cog):
                 for k, v in counts.items()
             ]
 
-    @commands.command(name="status")
+    @commands.hybrid_command(name="status", description="Status message.")
     async def status(
         self,
         ctx: commands.Context,
@@ -50,7 +50,10 @@ class Info(commands.Cog):
         """Status message."""
         await ctx.send("There IS somebody alive out there.")
 
-    @commands.command(name="binfo")
+    @commands.hybrid_command(
+        name="binfo",
+        description="Get info on bot and stats about database.",
+    )
     async def get_info(
         self,
         ctx: commands.Context,

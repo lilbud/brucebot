@@ -67,8 +67,11 @@ class Bootleg(commands.Cog):
 
         await menu.start()
 
-    @staticmethod
-    async def bootleg_search(date: datetime.datetime, cur: psycopg.AsyncCursor) -> dict:
+    async def bootleg_search(
+        self,
+        date: datetime.datetime,
+        cur: psycopg.AsyncCursor,
+    ) -> dict:
         """Search for bootlegs."""
         res = await cur.execute(
             """
@@ -95,7 +98,12 @@ class Bootleg(commands.Cog):
 
         return await res.fetchall()
 
-    @commands.command(name="bootleg", aliases=["boot"], usage="<date>")
+    @commands.hybrid_command(
+        name="bootleg",
+        aliases=["boot"],
+        description="Get a list bootlegs by date",
+        usage="<date>",
+    )
     async def get_bootlegs(
         self,
         ctx: commands.Context,
@@ -121,9 +129,12 @@ class Bootleg(commands.Cog):
 
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 bootlegs = await self.bootleg_search(date=date, cur=cur)
 
                 print(bootlegs[0])

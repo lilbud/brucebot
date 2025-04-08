@@ -23,49 +23,41 @@ class Tour(commands.Cog):
         menu = ViewMenu(
             ctx,
             menu_type=ViewMenu.TypeEmbedDynamic,
-            rows_requested=4,
+            rows_requested=5,
             all_can_click=True,
             timeout=None,
         )
 
         res = await cur.execute(
             """
-            WITH "event_info" AS (
-                SELECT
-                    event_id,
-                    event_date,
-                    brucebase_url
-                FROM "events"
-            )
             SELECT
-                "tours".*,
-                (SELECT event_date AS first_date FROM "event_info"
-                    WHERE event_id = "tours"."first_show"),
-                (SELECT brucebase_url AS first_url FROM "event_info"
-                    WHERE event_id = "tours"."first_show"),
-                (SELECT event_date AS last_date FROM "event_info"
-                    WHERE event_id = "tours"."last_show"),
-                (SELECT brucebase_url AS last_url FROM "event_info"
-                    WHERE event_id = "tours"."last_show")
-            FROM "tours"
-            ORDER BY first_show ASC;""",
+                t.id,
+                t.brucebase_id,
+                t.tour_name,
+                t.num_shows,
+                t.num_songs,
+                coalesce(e.event_date::text, e.event_id) AS first_date,
+                coalesce(e1.event_date::text, e1.event_id) AS last_date,
+                v.formatted_loc AS first_loc,
+                v1.formatted_loc AS last_loc
+            FROM tours t
+            LEFT JOIN events e ON e.event_id = t.first_show
+            LEFT JOIN events e1 ON e1.event_id = t.last_show
+            LEFT JOIN venues_text v ON v.id = e.venue_id
+            LEFT JOIN venues_text v1 ON v1.id = e1.venue_id
+            ORDER BY t.first_show
+            """,
         )
 
         tours = await res.fetchall()
 
         for row in tours:
-            tour_shows_url = (
-                f"http://brucebase.wikidot.com/stats:shows-{row["brucebase_id"]}"
-            )
-            tour_songs_url = (
-                f"http://brucebase.wikidot.com/stats:songs-{row["brucebase_id"]}"
-            )
-            shows = f"Shows: [{row['num_shows']}]({tour_shows_url})"
-            songs = f"Songs: [{row['num_songs']}]({tour_songs_url})"
-            first_show = f"First Show: [{row['first_date']}](http://brucebase.wikidot.com{row['first_url']})"
-            last_show = f"Last Show: [{row['last_date']}](http://brucebase.wikidot.com{row['last_url']})"
+            shows = f"**Shows:** {row['num_shows']}"
+            songs = f"**Songs:** {row['num_songs']}"
+            first_show = f"**First:** {row['first_date']} - {row['first_loc']}"
+            last_show = f"**Last:** {row['last_date']} - {row['last_loc']}"
 
-            tour = f"### **{row['tour_name']}**\n- {shows}\n- {songs}\n- {first_show}\n- {last_show}"  # noqa: E501
+            tour = f"### **{row['tour_name']}**\n- {shows}\t{songs}\n- {first_show}\n- {last_show}"  # noqa: E501
             menu.add_row(tour)
 
         menu.add_button(ViewButton.back())
@@ -74,25 +66,25 @@ class Tour(commands.Cog):
 
     async def get_tour_info(
         self,
-        tour_id: str,
+        tour_id: int,
         cur: psycopg.AsyncCursor,
     ) -> dict:
         """Get info with given tour_id."""
         res = await cur.execute(
             """SELECT
                 t.*,
-                e.event_date AS first_date,
-                e.event_url AS first_url,
-                e.city || ', ' ||
-                coalesce(e.state, e.country) AS first_loc,
-                e1.event_date AS last_date,
-                e1.event_url AS last_url,
-                e1.city || ', ' ||
-                coalesce(e1.state, e1.country) AS last_loc
+                coalesce(e.event_date::text, e.event_id::text) AS first_date,
+                e.brucebase_url AS first_url,
+                v.formatted_loc as first_loc,
+                coalesce(e1.event_date::text, e1.event_id::text) AS last_date,
+                e1.brucebase_url AS last_url,
+                v1.formatted_loc AS last_loc
             FROM "tours" t
-            LEFT JOIN "events_with_info" e ON e.event_id = t.first_show
-            LEFT JOIN "events_with_info" e1 ON e1.event_id = t.last_show
-            WHERE t.brucebase_id = %s""",
+            LEFT JOIN events e ON e.event_id = t.first_show
+            LEFT JOIN events e1 ON e1.event_id = t.last_show
+            LEFT JOIN venues_text v ON v.id = e.venue_id
+            LEFT JOIN venues_text v1 ON v1.id = e1.venue_id
+            WHERE t.id = %s""",
             (tour_id,),
         )
 
@@ -104,18 +96,13 @@ class Tour(commands.Cog):
         ctx: commands.Context,
     ) -> discord.Embed:
         """Create the song embed and sending."""
-        tour_shows_url = (
-            f"http://brucebase.wikidot.com/stats:shows-{tour["brucebase_id"]}"
-        )
-        tour_songs_url = (
-            f"http://brucebase.wikidot.com/stats:songs-{tour["brucebase_id"]}"
-        )
+        view = discord.ui.View()
 
         embed = await bot_embed.create_embed(
             ctx,
             tour["tour_name"],
             "",
-            f"http://brucebase.wikidot.com/tour:{tour["brucebase_id"]}",
+            f"http://brucebase.wikidot.com/tour:{tour['brucebase_id']}",
         )
 
         thumbnail = f"https://raw.githubusercontent.com/lilbud/brucebot/main/images/tours/{tour['brucebase_tag']}.jpg"
@@ -123,31 +110,64 @@ class Tour(commands.Cog):
 
         embed.add_field(
             name="Shows:",
-            value=f"[{tour['num_shows']}]({tour_shows_url})",
-            inline=False,
+            value=f"{tour['num_shows']}",
+            inline=True,
         )
 
         embed.add_field(
             name="Songs:",
-            value=f"[{tour['num_songs']}]({tour_songs_url})",
-            inline=False,
+            value=f"{tour['num_songs']}",
+            inline=True,
         )
 
         embed.add_field(
             name="First Show:",
-            value=f"[{tour['first_date']} - {tour['first_loc']}]({tour['first_url']})",
+            value=f"{tour['first_date']} - {tour['first_loc']}",
             inline=False,
         )
 
         embed.add_field(
             name="Last Show:",
-            value=f"[{tour['last_date']} - {tour['last_loc']}]({tour['last_url']})",
-            inline=False,
+            value=f"{tour['last_date']} - {tour['last_loc']}",
+            inline=True,
         )
 
-        await ctx.send(embed=embed)
+        shows_button = discord.ui.Button(
+            style="link",
+            url=f"http://brucebase.wikidot.com/stats:shows-{tour['brucebase_id']}",
+            label="Shows on Tour",
+            row=1,
+        )
 
-    @commands.command(name="tour", aliases=["t"])
+        songs_button = discord.ui.Button(
+            style="link",
+            url=f"http://brucebase.wikidot.com/stats:songs-{tour['brucebase_id']}",
+            label="Songs Played on Tour",
+            row=1,
+        )
+
+        first_show_button = discord.ui.Button(
+            style="link",
+            url=f"http://brucebase.wikidot.com{tour['first_url']}",
+            label="First Show",
+            row=2,
+        )
+
+        last_show_button = discord.ui.Button(
+            style="link",
+            url=f"http://brucebase.wikidot.com{tour['last_url']}",
+            label="Last Show",
+            row=2,
+        )
+
+        view.add_item(item=shows_button)
+        view.add_item(item=songs_button)
+        view.add_item(item=first_show_button)
+        view.add_item(item=last_show_button)
+
+        await ctx.send(embed=embed, view=view)
+
+    @commands.hybrid_command(name="tour", aliases=["t"])
     async def tour_find(
         self,
         ctx: commands.Context,
@@ -158,16 +178,19 @@ class Tour(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 if tour == "":
                     await self.default_tour_embed(ctx, cur)
                 else:
                     res = await cur.execute(
                         """
                         SELECT
-                            t.brucebase_id
+                            t.id
                         FROM
                             "tours" t,
                             plainto_tsquery('english', %(query)s) query
@@ -180,7 +203,7 @@ class Tour(commands.Cog):
                     tours = await res.fetchone()
 
                     if tours:
-                        tour_info = await self.get_tour_info(tours["brucebase_id"], cur)
+                        tour_info = await self.get_tour_info(tours["id"], cur)
                         await self.tour_embed(tour_info, ctx)
                     else:
                         embed = await bot_embed.not_found_embed(

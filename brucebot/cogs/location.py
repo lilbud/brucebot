@@ -40,7 +40,7 @@ class Location(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.group(
+    @commands.hybrid_group(
         name="location",
         aliases=["loc"],
         usage="[subcommand]",
@@ -54,7 +54,6 @@ class Location(commands.Cog):
     @location.command(
         name="city",
         usage="<city>",
-        brief="Search for a city with a Bruce history.",
     )
     async def city_find(
         self,
@@ -71,9 +70,12 @@ class Location(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 res = await cur.execute(
                     """
                         WITH cities_fts AS (
@@ -142,9 +144,12 @@ class Location(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 res = await cur.execute(
                     """
                         WITH states_fts AS (
@@ -210,9 +215,12 @@ class Location(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 res = await cur.execute(
                     """
                     WITH states_fts AS (

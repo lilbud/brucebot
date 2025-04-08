@@ -61,26 +61,26 @@ class Relation(commands.Cog):
         embed = await bot_embed.create_embed(
             ctx=ctx,
             title=relation["relation_name"],
-            description=f"**Nicknames:** {relation["aliases"]}",
-            url=f"http://brucebase.wikidot.com/relation:{relation["brucebase_url"]}",
+            description=f"**Nicknames:** {relation['aliases']}",
+            url=f"http://brucebase.wikidot.com/relation:{relation['brucebase_url']}",
         )
 
         embed.add_field(name="Appearances", value=relation["appearances"])
 
         embed.add_field(
             name="First Appearance:",
-            value=f"[{relation["first_date"]}](http://brucebase.wikidot.com{relation['first_url']})",
+            value=f"[{relation['first_date']}](http://brucebase.wikidot.com{relation['first_url']})",
         )
 
         embed.add_field(
             name="Last Appearance:",
-            value=f"[{relation["last_date"]}](http://brucebase.wikidot.com{relation['last_url']})",
+            value=f"[{relation['last_date']}](http://brucebase.wikidot.com{relation['last_url']})",
         )
 
         return embed
 
     # name, num_appearances, first, last
-    @commands.command(name="relation", aliases=["rel"], usage="<person>")
+    @commands.hybrid_command(name="relation", aliases=["rel"], usage="<person>")
     async def relation_find(
         self,
         ctx: commands.Context,
@@ -94,9 +94,12 @@ class Relation(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 res = await cur.execute(
                     """
                     SELECT
@@ -111,8 +114,8 @@ class Relation(commands.Cog):
                             unaccent(relation_name) || ' ' ||
                             coalesce(aliases, '')) similarity
                     WHERE query @@ fts
-                    ORDER BY appearances DESC, rank DESC, similarity DESC NULLS LAST
-                    """,
+                    ORDER BY appearances DESC, rank DESC, similarity DESC NULLS LAST LIMIT 1
+                    """,  # noqa: E501
                     {"query": relation_query},
                 )
 

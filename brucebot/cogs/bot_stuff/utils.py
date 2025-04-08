@@ -1,8 +1,8 @@
 import datetime
-import re
 from urllib.parse import urlparse
 
 import discord
+import psycopg
 from dateutil import parser
 
 
@@ -38,11 +38,29 @@ async def create_link_button(
     )
 
 
-async def clean_message(argument: str) -> str:
-    """Remove apostrophes."""
-    replacements = [("’", "''"), ("‘", "''"), ("”", '"'), ("‟", '"')]
+async def song_find_fuzzy(
+    query: str,
+    cur: psycopg.AsyncCursor,
+) -> dict:
+    """Fuzzy search SONGS table using full text search."""
+    res = await cur.execute(
+        """
+        SELECT
+            s.id,
+            s.brucebase_url,
+            s.song_name,
+            rank,
+            similarity
+        FROM
+            "songs" s,
+            plainto_tsquery('simple', %(query)s) query,
+            ts_rank(fts, query) rank,
+            SIMILARITY(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
+        WHERE query @@ fts
+        AND similarity >= 0.0415
+        ORDER BY similarity DESC, rank DESC NULLS LAST LIMIT 1;
+        """,  # noqa: E501
+        {"query": query},
+    )
 
-    for pattern, repl in replacements:
-        argument = re.sub(pattern, repl, argument)
-
-    return argument
+    return await res.fetchone()

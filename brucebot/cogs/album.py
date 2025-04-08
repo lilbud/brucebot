@@ -85,8 +85,7 @@ class Album(commands.Cog):
 
         return {"least": stats[0], "most": stats[-1]}
 
-    @staticmethod
-    async def album_search(query: str, cur: psycopg.AsyncCursor) -> dict:
+    async def album_search(self, query: str, cur: psycopg.AsyncCursor) -> dict:
         """Find album by query."""
         res = await cur.execute(
             """
@@ -111,11 +110,11 @@ class Album(commands.Cog):
 
         return await res.fetchone()
 
-    @commands.command(
+    @commands.hybrid_command(
         name="album",
         aliases=["a"],
         usage="<album>",
-        brief="Search database for album.",
+        description="Search database for album.",
     )
     async def album_find(
         self,

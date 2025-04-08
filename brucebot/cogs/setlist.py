@@ -314,7 +314,12 @@ class Setlist(commands.Cog):
 
             await ctx.invoke(self.bot.get_command("setlist"), date_query=date)
 
-    @commands.command(name="setlist", aliases=["sl"], usage="<date>")
+    @commands.hybrid_command(
+        name="setlist",
+        aliases=["sl"],
+        description="Fetch setlists for a given date, leave empty to get most recent.",
+        usage="<date>",
+    )
     async def get_setlists(
         self,
         ctx: commands.Context,
@@ -328,7 +333,7 @@ class Setlist(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            if re.search(r"\/(gig|rehearsal|nogig|recording):", date_query):
+            if re.search(r"\/(gig|rehearsal|nogig|recording|nobruce):", date_query):
                 event = await self.parse_brucebase_url(date_query, pool)
 
                 if event:

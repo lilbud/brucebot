@@ -73,6 +73,8 @@ class MyHelp(commands.HelpCommand):
             color=discord.Color.blurple(),
         )
 
+        embed.description += "\n\nCan also use slash commands"
+
         embed.description += "\n\n__**subcommands**__"
 
         if filtered_commands := await self.filter_commands(group.commands):

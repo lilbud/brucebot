@@ -15,7 +15,12 @@ class OnThisDay(commands.Cog, name="On This Day"):
         self.bot = bot
         self.description = "Find events by day"
 
-    @commands.command(name="otd", usage="<date>")
+    @commands.hybrid_command(
+        name="onthisday",
+        aliases=["otd"],
+        description="Find events on a given day, or current day if empty.",
+        usage="<date>",
+    )
     async def on_this_day(
         self,
         ctx: commands.Context,
@@ -26,9 +31,12 @@ class OnThisDay(commands.Cog, name="On This Day"):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 if date_query == "":
                     date = current_date
                 else:
@@ -61,7 +69,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                     AND e.event_url NOT LIKE '/nogig:'
                     ORDER BY e.event_date, e.event_url;
                     """,  # noqa: E501
-                    {"name": f"%{date.strftime("%m-%d")}"},
+                    {"name": f"%{date.strftime('%m-%d')}"},
                 )
 
                 otd_results = await res.fetchall()

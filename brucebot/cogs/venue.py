@@ -23,20 +23,20 @@ class Venue(commands.Cog):
         embed = await bot_embed.create_embed(
             ctx=ctx,
             title=venue["formatted_loc"],
-            description=f"**Nicknames:** {venue["aliases"]}",
-            url=f"http://brucebase.wikidot.com/venue:{venue["brucebase_url"]}",
+            description=f"**Nicknames:** {venue['aliases']}",
+            url=f"http://brucebase.wikidot.com/venue:{venue['brucebase_url']}",
         )
 
         embed.add_field(name="Appearances", value=venue["num_events"])
 
         embed.add_field(
             name="First Event:",
-            value=f"[{stats['first']["event_date"]}](http://brucebase.wikidot.com{stats['first']['brucebase_url']})",
+            value=f"[{stats['first']['event_date']}](http://brucebase.wikidot.com{stats['first']['brucebase_url']})",
         )
 
         embed.add_field(
             name="Last Event:",
-            value=f"[{stats['last']["event_date"]}](http://brucebase.wikidot.com{stats['last']['brucebase_url']})",
+            value=f"[{stats['last']['event_date']}](http://brucebase.wikidot.com{stats['last']['brucebase_url']})",
         )
 
         return embed
@@ -80,7 +80,7 @@ class Venue(commands.Cog):
 
         return await res.fetchone()
 
-    @commands.command(
+    @commands.hybrid_command(
         name="venue",
         aliases=["v"],
         usage="<venue>",
@@ -99,9 +99,12 @@ class Venue(commands.Cog):
         async with await db.create_pool() as pool:
             await ctx.typing()
 
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 venue = await self.venue_search(venue_query, cur)
 
                 if venue is not None:

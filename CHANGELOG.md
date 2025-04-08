@@ -42,3 +42,5 @@
   - releases are now gotten in one function, rather than one for nugs and archive. Just makes things cleaner.
 - 2025-04-07 - updated setlist table in the database, so had to fix a ton of stuff. Changed it to use song id rather than brucebase_url. Makes for easier joins and whatnot.
   - updated: song, album, stats
+- 2025-04-08 - moved the song fuzzy search to `utils`, as I use it for multiple commands.
+- 2025-04-08 - converted all commands to hybrid commands. Which allows both the newer slash commands AND the classic prefix commands.

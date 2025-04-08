@@ -23,7 +23,7 @@ class Archive(commands.Cog):
         for index, show in enumerate(shows, start=1):
             added_date = show["created_at"]
 
-            row = f"{index}. [{show['archive_url'][28:]}]({show['archive_url']})\n\tAdded: {added_date.strftime("%Y-%m-%d - %I:%M %p")}"  # noqa: E501
+            row = f"{index}. [{show['archive_url'][28:]}]({show['archive_url']})\n\tAdded: {added_date.strftime('%Y-%m-%d - %I:%M %p')}"  # noqa: E501
 
             menu.add_row(row)
 
@@ -46,13 +46,18 @@ class Archive(commands.Cog):
         for index, show in enumerate(shows, start=1):
             added_date = show["created_at"]
 
-            row = f"{index}. [{show['archive_url'][28:]}]({show['archive_url']})\n\tAdded: {added_date.strftime("%Y-%m-%d %I:%M %p")}"  # noqa: E501
+            row = f"{index}. [{show['archive_url'][28:]}]({show['archive_url']})\n\tAdded: {added_date.strftime('%Y-%m-%d %I:%M %p')}"  # noqa: E501
 
             menu.add_row(row)
 
         await menu.start()
 
-    @commands.command(name="archive", aliases=["ar"], usage="<date>")
+    @commands.hybrid_command(
+        name="archive",
+        aliases=["ar"],
+        description="Search the Radio Nowhere archive by date",
+        usage="<date>",
+    )
     async def get_archive_shows(  # noqa: D102
         self,
         ctx: commands.Context,
@@ -60,9 +65,12 @@ class Archive(commands.Cog):
         date_query: str = "",
     ) -> None:
         async with await db.create_pool() as pool:  # noqa: SIM117
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 if date_query:
                     date = await utils.date_parsing(date_query)
 

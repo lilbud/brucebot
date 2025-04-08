@@ -95,15 +95,11 @@ class Admin(commands.Cog):
     @commands.is_owner()
     async def sync(self, ctx: commands.Context) -> None:
         """Sync commands."""
+        ctx.bot.tree.clear_commands(guild=None)
         ctx.bot.tree.copy_global_to(guild=TESTING)
-        ctx.bot.tree.copy_global_to(guild=BRUCE)
-        ctx.bot.tree.copy_global_to(guild=SNAKES)
+        synced = await ctx.bot.tree.sync(guild=None)
 
-        synced = await ctx.bot.tree.sync(guild=TESTING)
-        synced = await ctx.bot.tree.sync(guild=BRUCE)
-        synced = await ctx.bot.tree.sync(guild=SNAKES)
-
-        await ctx.send(f"Synced {len(synced)} commands globally")
+        await ctx.send(f"Cleared tree and synced {len(synced)} commands globally")
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -98,7 +98,7 @@ class Admin(commands.Cog):
         ctx.bot.tree.clear_commands(guild=None)
         guilds = [735698850802565171, 363116664558059521, 968567196169146419]
 
-        await ctx.bot.tree.copy_global_to(guild=TESTING)
+        ctx.bot.tree.copy_global_to(guild=TESTING)
 
         for guild in guilds:
             synced = await ctx.bot.tree.sync(guild=discord.Object(id=guild))

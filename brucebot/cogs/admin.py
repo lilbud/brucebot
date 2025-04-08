@@ -102,7 +102,7 @@ class Admin(commands.Cog):
         ]
 
         ctx.bot.tree.copy_global_to(guild=TESTING)
-        synced = await ctx.bot.tree.sync(guilds=servers)
+        synced = await ctx.bot.tree.sync(guild=servers)
 
         await ctx.send(f"Synced {len(synced)} commands globally")
 

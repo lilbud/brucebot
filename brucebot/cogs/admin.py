@@ -95,14 +95,11 @@ class Admin(commands.Cog):
     @commands.is_owner()
     async def sync(self, ctx: commands.Context) -> None:
         """Sync commands."""
-        servers = [
-            discord.Object(id=363116664558059521),  # brucecord
-            discord.Object(id=735698850802565171),  # testing
-            discord.Object(id=968567196169146419),  # snakes
-        ]
-
         ctx.bot.tree.copy_global_to(guild=TESTING)
-        synced = await ctx.bot.tree.sync(guild=servers)
+        ctx.bot.tree.copy_global_to(guild=BRUCE)
+        ctx.bot.tree.copy_global_to(guild=SNAKES)
+
+        synced = await ctx.bot.tree.sync()
 
         await ctx.send(f"Synced {len(synced)} commands globally")
 

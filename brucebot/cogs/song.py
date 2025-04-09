@@ -257,7 +257,7 @@ class Song(commands.Cog):
 
                     brucebase_button = discord.ui.Button(
                         style="link",
-                        url=f"http://brucebase.wikidot.com/song:{song['brucebase_url']}",
+                        url=f"http://brucebase.wikidot.com{song['brucebase_url']}",
                         label="Brucebase",
                     )
 

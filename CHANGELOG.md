@@ -44,3 +44,4 @@
   - updated: song, album, stats
 - 2025-04-08 - moved the song fuzzy search to `utils`, as I use it for multiple commands.
 - 2025-04-08 - converted all commands to hybrid commands. Which allows both the newer slash commands AND the classic prefix commands.
+- 2025-04-09 - update song embed brucebase button to use correct link

@@ -45,51 +45,49 @@ class Cover(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        date_query: str,
+        date: str,
     ) -> list:
         """Get list of covers from my repo based on date."""
-        async with await db.create_pool() as pool:
-            await ctx.typing()
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            date = await utils.date_parsing(date)
 
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                date = await utils.date_parsing(date_query)
-
-                try:
-                    date.strftime("%Y-%m-%d")
-                except AttributeError:
-                    embed = await bot_embed.not_found_embed(
-                        command=self.__class__.__name__,
-                        message=date_query,
-                    )
-                    await ctx.send(embed=embed)
-
-                    return
-
-                res = await cur.execute(
-                    """SELECT cover_url, 'lilbud' AS source FROM "covers"
-                    WHERE event_date=%(date)s""",
-                    {"date": date.strftime("%Y-%m-%d")},
+            try:
+                date.strftime("%Y-%m-%d")
+            except AttributeError:
+                embed = await bot_embed.not_found_embed(
+                    command=self.__class__.__name__,
+                    message=date,
                 )
+                await ctx.send(embed=embed)
 
-                files = await res.fetchall()
+                return
 
-                if len(files) == 0:
-                    res = await cur.execute(
-                        """SELECT
+            res = await cur.execute(
+                """SELECT cover_url, 'lilbud' AS source FROM "covers"
+                    WHERE event_date=%(date)s""",
+                {"date": date.strftime("%Y-%m-%d")},
+            )
+
+            files = await res.fetchall()
+
+            if len(files) == 0:
+                res = await cur.execute(
+                    """SELECT
                             n.thumbnail_url AS cover_url,
                             'Nugs' AS source
                         FROM nugs_releases n
                         LEFT JOIN events e ON e.event_id = n.event_id
                         WHERE e.event_date = %(date)s""",
-                        {"date": date.strftime("%Y-%m-%d")},
-                    )
+                    {"date": date.strftime("%Y-%m-%d")},
+                )
 
-                    files = await res.fetchall()
+                files = await res.fetchall()
 
         # ViewMenu is only for multiple covers,
         # single embed is just default embed + image.
@@ -113,7 +111,7 @@ class Cover(commands.Cog):
         else:
             embed = await bot_embed.not_found_embed(
                 command=self.__class__.__name__,
-                message=date_query,
+                message=date,
             )
             await ctx.send(embed=embed)
 

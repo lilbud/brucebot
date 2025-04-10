@@ -60,8 +60,6 @@ class Info(commands.Cog):
     ) -> None:
         """Get info on bot and stats about database."""
         async with await db.create_pool() as pool:
-            await ctx.typing()
-
             menu = await viewmenu.create_view_menu(
                 ctx,
                 style="Page $/&",

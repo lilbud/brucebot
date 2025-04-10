@@ -85,23 +85,21 @@ class Relation(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        relation_query: str,
+        relation: str,
     ) -> None:
         """Find relation based on input.
 
         Can search by name or nickname (Big Man, Phantom, etc.)
         """
-        async with await db.create_pool() as pool:
-            await ctx.typing()
-
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                res = await cur.execute(
-                    """
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            res = await cur.execute(
+                """
                     SELECT
                         id,
                         rank,
@@ -116,26 +114,26 @@ class Relation(commands.Cog):
                     WHERE query @@ fts
                     ORDER BY appearances DESC, rank DESC, similarity DESC NULLS LAST LIMIT 1
                     """,  # noqa: E501
-                    {"query": relation_query},
+                {"query": relation},
+            )
+
+            relation = await res.fetchone()
+
+            if relation is not None:
+                relation_info = await self.get_relation_info(
+                    relation_id=relation["id"],
+                    cur=cur,
                 )
 
-                relation = await res.fetchone()
+                embed = await self.relation_embed(relation=relation_info, ctx=ctx)
 
-                if relation is not None:
-                    relation_info = await self.get_relation_info(
-                        relation_id=relation["id"],
-                        cur=cur,
-                    )
-
-                    embed = await self.relation_embed(relation=relation_info, ctx=ctx)
-
-                    await ctx.send(embed=embed)
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command=self.__class__.__name__,
-                        message=relation_query,
-                    )
-                    await ctx.send(embed=embed)
+                await ctx.send(embed=embed)
+            else:
+                embed = await bot_embed.not_found_embed(
+                    command=self.__class__.__name__,
+                    message=relation,
+                )
+                await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -92,19 +92,6 @@ class Admin(commands.Cog):
 
         await ctx.send("Cleared Commands")
 
-    # @commands.command(hidden=True)
-    # @commands.is_owner()
-    # async def sync(self, ctx: commands.Context) -> None:
-    #     """Sync commands."""
-    #     ctx.bot.tree.clear_commands(guild=None)
-    #     guilds = [735698850802565171, 363116664558059521, 968567196169146419]
-
-    #     for guild in guilds:
-    #         ctx.bot.tree.copy_global_to(guild=discord.Object(id=guild))
-    #         synced = await ctx.bot.tree.sync(guild=discord.Object(id=guild))
-
-    #     await ctx.send(f"Cleared tree and synced {len(synced)} commands globally")
-
     @commands.command(hidden=True)
     @commands.guild_only()
     @commands.is_owner()
@@ -129,7 +116,7 @@ class Admin(commands.Cog):
                 synced = await ctx.bot.tree.sync()
 
             await ctx.send(
-                f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}",
+                f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}",  # noqa: E501
             )
             return
 

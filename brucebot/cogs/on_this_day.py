@@ -25,35 +25,33 @@ class OnThisDay(commands.Cog, name="On This Day"):
         self,
         ctx: commands.Context,
         *,
-        date_query: str = "",
+        date: str = "",
     ) -> None:
         """Find events on a given day, or current day if empty."""
-        async with await db.create_pool() as pool:
-            await ctx.typing()
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            if date == "":
+                date = current_date
+            else:
+                date = await utils.date_parsing(date)
 
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                if date_query == "":
-                    date = current_date
-                else:
-                    date = await utils.date_parsing(date_query)
+            try:
+                date.strftime("%m-%d")
+            except AttributeError:
+                embed = await bot_embed.not_found_embed(
+                    command="Events",
+                    message=date,
+                )
+                await ctx.send(embed=embed)
+                return
 
-                try:
-                    date.strftime("%m-%d")
-                except AttributeError:
-                    embed = await bot_embed.not_found_embed(
-                        command="Events",
-                        message=date,
-                    )
-                    await ctx.send(embed=embed)
-                    return
-
-                res = await cur.execute(
-                    """
+            res = await cur.execute(
+                """
                     SELECT
                         e.formatted_date ||
                         CASE
@@ -69,34 +67,34 @@ class OnThisDay(commands.Cog, name="On This Day"):
                     AND e.event_url NOT LIKE '/nogig:'
                     ORDER BY e.event_date, e.event_url;
                     """,  # noqa: E501
-                    {"name": f"%{date.strftime('%m-%d')}"},
+                {"name": f"%{date.strftime('%m-%d')}"},
+            )
+
+            otd_results = await res.fetchall()
+
+            if len(otd_results) > 0:
+                menu = await viewmenu.create_dynamic_menu(
+                    ctx=ctx,
+                    page_counter="Event $/&\nEvents with # are placeholder dates",
+                    rows=6,
+                    title=date.strftime("%B %d"),
                 )
 
-                otd_results = await res.fetchall()
+                data = [
+                    f"**{row['artist']}:**\n- [{row['date']} - {row['location']}]({row['url']})\n"  # noqa: E501
+                    for row in otd_results
+                ]
 
-                if len(otd_results) > 0:
-                    menu = await viewmenu.create_dynamic_menu(
-                        ctx=ctx,
-                        page_counter="Event $/&\nEvents with # are placeholder dates",
-                        rows=6,
-                        title=date.strftime("%B %d"),
-                    )
+                for row in data:
+                    menu.add_row(data=row)
 
-                    data = [
-                        f"**{row['artist']}:**\n- [{row['date']} - {row['location']}]({row['url']})\n"  # noqa: E501
-                        for row in otd_results
-                    ]
-
-                    for row in data:
-                        menu.add_row(data=row)
-
-                    await menu.start()
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command="events",
-                        message=date_query,
-                    )
-                    await ctx.send(embed=embed)
+                await menu.start()
+            else:
+                embed = await bot_embed.not_found_embed(
+                    command="events",
+                    message=date,
+                )
+                await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

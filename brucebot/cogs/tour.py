@@ -175,20 +175,18 @@ class Tour(commands.Cog):
         tour: str = "",
     ) -> None:
         """Find tour based on input."""
-        async with await db.create_pool() as pool:
-            await ctx.typing()
-
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                if tour == "":
-                    await self.default_tour_embed(ctx, cur)
-                else:
-                    res = await cur.execute(
-                        """
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            if tour == "":
+                await self.default_tour_embed(ctx, cur)
+            else:
+                res = await cur.execute(
+                    """
                         SELECT
                             t.id
                         FROM
@@ -197,20 +195,20 @@ class Tour(commands.Cog):
                         WHERE query @@ fts
                         ORDER BY t.num_shows DESC NULLS LAST;
                         """,
-                        {"query": tour},
+                    {"query": tour},
+                )
+
+                tours = await res.fetchone()
+
+                if tours:
+                    tour_info = await self.get_tour_info(tours["id"], cur)
+                    await self.tour_embed(tour_info, ctx)
+                else:
+                    embed = await bot_embed.not_found_embed(
+                        command=self.__class__.__name__,
+                        message=tour,
                     )
-
-                    tours = await res.fetchone()
-
-                    if tours:
-                        tour_info = await self.get_tour_info(tours["id"], cur)
-                        await self.tour_embed(tour_info, ctx)
-                    else:
-                        embed = await bot_embed.not_found_embed(
-                            command=self.__class__.__name__,
-                            message=tour,
-                        )
-                        await ctx.send(embed=embed)
+                    await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

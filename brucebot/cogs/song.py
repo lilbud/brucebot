@@ -27,7 +27,7 @@ class Song(commands.Cog):
             AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
             GROUP BY to_char(e.event_date, 'YYYY')
             ORDER BY to_char(e.event_date, 'YYYY')
-            """,
+            """,  # noqa: E501
             {"song": song_id},
         )
 
@@ -115,20 +115,17 @@ class Song(commands.Cog):
     ) -> int:
         """Get gap between shows."""
         res = await cur.execute(
-            """SELECT event_num::int AS num FROM "events" WHERE event_id=%s""",
+            """
+            SELECT
+                MAX(event_num) - MIN(event_num) FILTER (WHERE event_id=%s) AS gap
+            FROM "events"
+            """,
             (last_show,),
         )
 
-        last_show_num = await res.fetchone()
+        show_gap = await res.fetchone()
 
-        res = await cur.execute(
-            """SELECT event_num::int AS num FROM "events" WHERE
-                event_id=(SELECT MAX(event_id) FROM "setlists")""",
-        )
-
-        most_recent_show_num = await res.fetchone()
-
-        return most_recent_show_num["num"] - last_show_num["num"]
+        return show_gap["gap"]
 
     async def song_embed(
         self,
@@ -217,60 +214,58 @@ class Song(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        song_query: str,
+        song: str,
     ) -> None:
         """Search database for song."""
-        song_query = ftfy.fix_text(song_query)
+        song = ftfy.fix_text(song)
 
-        async with await db.create_pool() as pool:
-            await ctx.typing()
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            song = await utils.song_find_fuzzy(song, cur)
 
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                song = await utils.song_find_fuzzy(song_query, cur)
+            if song:
+                view = discord.ui.View()
 
-                if song:
-                    view = discord.ui.View()
+                release = await self.get_first_release(
+                    song_id=song["id"],
+                    cur=cur,
+                )
 
-                    release = await self.get_first_release(
-                        song_id=song["id"],
-                        cur=cur,
-                    )
+                song_info = await self.get_song_info(
+                    song_id=song["id"],
+                    cur=cur,
+                )
 
-                    song_info = await self.get_song_info(
-                        song_id=song["id"],
-                        cur=cur,
-                    )
+                print(song_info)
 
-                    print(song_info)
+                embed = await self.song_embed(
+                    song=song_info,
+                    release=release,
+                    ctx=ctx,
+                    cur=cur,
+                )
 
-                    embed = await self.song_embed(
-                        song=song_info,
-                        release=release,
-                        ctx=ctx,
-                        cur=cur,
-                    )
+                brucebase_button = discord.ui.Button(
+                    style="link",
+                    url=f"http://brucebase.wikidot.com{song['brucebase_url']}",
+                    label="Brucebase",
+                )
 
-                    brucebase_button = discord.ui.Button(
-                        style="link",
-                        url=f"http://brucebase.wikidot.com{song['brucebase_url']}",
-                        label="Brucebase",
-                    )
+                view.add_item(item=brucebase_button)
 
-                    view.add_item(item=brucebase_button)
+                await ctx.send(embed=embed, view=view)
 
-                    await ctx.send(embed=embed, view=view)
-
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command=self.__class__.__name__,
-                        message=song_query,
-                    )
-                    await ctx.send(embed=embed)
+            else:
+                embed = await bot_embed.not_found_embed(
+                    command=self.__class__.__name__,
+                    message=song,
+                )
+                await ctx.send(embed=embed)
 
     @song_find.command(
         name="tour",
@@ -281,54 +276,52 @@ class Song(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        song_query: str = "",
+        song: str = "",
     ) -> None:
         """Search database by song and get tour counts."""
-        if song_query == "":
+        if song == "":
             await ctx.send_help(ctx.command)
             return
 
-        async with await db.create_pool() as pool:
-            await ctx.typing()
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            song = await utils.song_find_fuzzy(song, cur)
 
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                song = await utils.song_find_fuzzy(song_query, cur)
+            if song:
+                song_info = await self.get_song_info(
+                    song_id=song["id"],
+                    cur=cur,
+                )
 
-                if song:
-                    song_info = await self.get_song_info(
-                        song_id=song["id"],
-                        cur=cur,
+                tour_stats = await self.get_count_by_tour(
+                    song["id"],
+                    cur,
+                )
+
+                menu = await viewmenu.create_dynamic_menu(
+                    ctx=ctx,
+                    page_counter="Page $/&",
+                    rows=12,
+                    title=f"Tour Count For: {song_info['song_name']}",
+                )
+
+                for index, row in enumerate(tour_stats, start=1):
+                    menu.add_row(
+                        f"{index}. _{row['years']}_: **{row['tour']}** - _{row['count']} time(s)_",  # noqa: E501
                     )
 
-                    tour_stats = await self.get_count_by_tour(
-                        song["id"],
-                        cur,
-                    )
-
-                    menu = await viewmenu.create_dynamic_menu(
-                        ctx=ctx,
-                        page_counter="Page $/&",
-                        rows=12,
-                        title=f"Tour Count For: {song_info['song_name']}",
-                    )
-
-                    for index, row in enumerate(tour_stats, start=1):
-                        menu.add_row(
-                            f"{index}. _{row['years']}_: **{row['tour']}** - _{row['count']} time(s)_",  # noqa: E501
-                        )
-
-                    await menu.start()
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command=self.__class__.__name__,
-                        message=song_query,
-                    )
-                    await ctx.send(embed=embed)
+                await menu.start()
+            else:
+                embed = await bot_embed.not_found_embed(
+                    command=self.__class__.__name__,
+                    message=song,
+                )
+                await ctx.send(embed=embed)
 
     @song_find.command(
         name="year",
@@ -339,52 +332,50 @@ class Song(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        song_query: str = "",
+        song: str = "",
     ) -> None:
         """Search database by song and get year counts."""
-        if song_query == "":
+        if song == "":
             await ctx.send_help(ctx.command)
             return
 
-        async with await db.create_pool() as pool:
-            await ctx.typing()
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            song = await utils.song_find_fuzzy(song, cur)
 
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                song = await utils.song_find_fuzzy(song_query, cur)
+            if song:
+                song_info = await self.get_song_info(
+                    song_id=song["id"],
+                    cur=cur,
+                )
 
-                if song:
-                    song_info = await self.get_song_info(
-                        song_id=song["id"],
-                        cur=cur,
-                    )
+                year_stats = await self.get_count_by_year(
+                    song["id"],
+                    cur,
+                )
 
-                    year_stats = await self.get_count_by_year(
-                        song["id"],
-                        cur,
-                    )
+                menu = await viewmenu.create_dynamic_menu(
+                    ctx=ctx,
+                    page_counter="Page $/&",
+                    rows=12,
+                    title=f"Year Count For: {song_info['song_name']}",
+                )
 
-                    menu = await viewmenu.create_dynamic_menu(
-                        ctx=ctx,
-                        page_counter="Page $/&",
-                        rows=12,
-                        title=f"Year Count For: {song_info['song_name']}",
-                    )
+                for index, row in enumerate(year_stats, start=1):
+                    menu.add_row(f"{index}. **{row['year']}**: _{row['count']}_")
 
-                    for index, row in enumerate(year_stats, start=1):
-                        menu.add_row(f"{index}. **{row['year']}**: _{row['count']}_")
-
-                    await menu.start()
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command=self.__class__.__name__,
-                        message=song_query,
-                    )
-                    await ctx.send(embed=embed)
+                await menu.start()
+            else:
+                embed = await bot_embed.not_found_embed(
+                    command=self.__class__.__name__,
+                    message=song,
+                )
+                await ctx.send(embed=embed)
 
     async def snippet_song_count(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
         """Get count of songs that a snippet was included as part of."""
@@ -416,25 +407,23 @@ class Song(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        song_query: str,
+        song: str,
     ) -> None:
         """Search database for songs as snippets."""
-        song_query = ftfy.fix_text(song_query)
+        song = ftfy.fix_text(song)
 
-        async with await db.create_pool() as pool:
-            await ctx.typing()
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            song = await utils.song_find_fuzzy(song, cur)
 
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                song = await utils.song_find_fuzzy(song_query, cur)
-
-                if song:
-                    res = await cur.execute(
-                        """SELECT
+            if song:
+                res = await cur.execute(
+                    """SELECT
                             count(sn.snippet_id) AS count,
                             MIN(e.event_date) AS first,
                             (SELECT brucebase_url FROM events WHERE
@@ -445,77 +434,77 @@ class Song(commands.Cog):
                         FROM snippets sn
                         LEFT JOIN events e ON e.event_id = sn.event_id
                         WHERE snippet_id = %s""",
-                        (song["id"],),
+                    (song["id"],),
+                )
+
+                snippet = await res.fetchone()
+
+                snippet_songs = await self.snippet_song_count(
+                    song_id=song["id"],
+                    cur=cur,
+                )
+
+                release = await self.get_first_release(
+                    song_id=song["id"],
+                    cur=cur,
+                )
+
+                song_info = await self.get_song_info(
+                    song_id=song["id"],
+                    cur=cur,
+                )
+
+                embed = await bot_embed.create_embed(
+                    ctx=ctx,
+                    title=f"{song_info['song_name']} (snippet)",
+                    url=f"http://brucebase.wikidot.com{song['brucebase_url']}",
+                )
+
+                if release:
+                    embed.add_field(
+                        name="Original Release:",
+                        value=f"{release['name']} _({release['release_date']})_",
+                        inline=False,
                     )
 
-                    snippet = await res.fetchone()
-
-                    snippet_songs = await self.snippet_song_count(
-                        song_id=song["id"],
-                        cur=cur,
+                try:
+                    embed.set_thumbnail(url=release["thumb"])
+                except TypeError:
+                    embed.set_thumbnail(
+                        url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
                     )
 
-                    release = await self.get_first_release(
-                        song_id=song["id"],
-                        cur=cur,
+                embed.add_field(name="Count:", value=snippet["count"])
+
+                if snippet["count"] > 0:
+                    embed.add_field(
+                        name="First:",
+                        value=f"[{snippet['first']}](<http://brucebase.wikidot.com{snippet['first_url']}>)",
+                    )
+                    embed.add_field(
+                        name="Last:",
+                        value=f"[{snippet['last']}](<http://brucebase.wikidot.com{snippet['last_url']}>)",
                     )
 
-                    song_info = await self.get_song_info(
-                        song_id=song["id"],
-                        cur=cur,
+                if snippet_songs:
+                    songs = [
+                        f"[{song['song_name']}](http://brucebase.wikidot.com{song['url']}) - {song['count']} times(s)"  # noqa: E501
+                        for song in snippet_songs
+                    ]
+
+                    embed.add_field(
+                        name="Included During:",
+                        value=f"{'\n'.join(songs)}",
+                        inline=False,
                     )
 
-                    embed = await bot_embed.create_embed(
-                        ctx=ctx,
-                        title=f"{song_info['song_name']} (snippet)",
-                        url=f"http://brucebase.wikidot.com{song['brucebase_url']}",
-                    )
-
-                    if release:
-                        embed.add_field(
-                            name="Original Release:",
-                            value=f"{release['name']} _({release['release_date']})_",
-                            inline=False,
-                        )
-
-                    try:
-                        embed.set_thumbnail(url=release["thumb"])
-                    except TypeError:
-                        embed.set_thumbnail(
-                            url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
-                        )
-
-                    embed.add_field(name="Count:", value=snippet["count"])
-
-                    if snippet["count"] > 0:
-                        embed.add_field(
-                            name="First:",
-                            value=f"[{snippet['first']}](<http://brucebase.wikidot.com{snippet['first_url']}>)",
-                        )
-                        embed.add_field(
-                            name="Last:",
-                            value=f"[{snippet['last']}](<http://brucebase.wikidot.com{snippet['last_url']}>)",
-                        )
-
-                    if snippet_songs:
-                        songs = [
-                            f"[{song['song_name']}](http://brucebase.wikidot.com{song['url']}) - {song['count']} times(s)"
-                            for song in snippet_songs
-                        ]
-
-                        embed.add_field(
-                            name="Included During:",
-                            value=f"{'\n'.join(songs)}",
-                            inline=False,
-                        )
-
-                    await ctx.send(embed=embed)
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command="snippet",
-                        message=song_query,
-                    )
-                    await ctx.send(embed=embed)
+                await ctx.send(embed=embed)
+            else:
+                embed = await bot_embed.not_found_embed(
+                    command="snippet",
+                    message=song,
+                )
+                await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

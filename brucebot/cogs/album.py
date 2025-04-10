@@ -26,9 +26,9 @@ class Album(commands.Cog):
             title=album["release_name"],
         )
 
-        if album["release_thumb"]:
+        try:
             embed.set_thumbnail(url=album["release_thumb"])
-        else:
+        except TypeError:
             embed.set_thumbnail(
                 url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
             )
@@ -70,7 +70,7 @@ class Album(commands.Cog):
             """
             SELECT
                 r.release_id,
-                'http://brucebase.wikidot.com/song:' || s.brucebase_url AS url,
+                'http://brucebase.wikidot.com' || s.brucebase_url AS url,
                 s.song_name,
                 s.num_plays_public AS times_played
             FROM "release_tracks" r
@@ -120,54 +120,52 @@ class Album(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        album_query: str,
+        album: str,
     ) -> None:
         """Search database for album.
 
         Album can be found by name or alias.
         """
-        async with await db.create_pool() as pool:
-            await ctx.typing()
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            album = await self.album_search(album, cur)
 
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                album = await self.album_search(album_query, cur)
+            if album:
+                view = discord.ui.View()
 
-                if album:
-                    view = discord.ui.View()
+                stats = await self.get_album_stats(
+                    album_id=album["id"],
+                    cur=cur,
+                )
 
-                    stats = await self.get_album_stats(
-                        album_id=album["id"],
-                        cur=cur,
-                    )
+                embed = await self.album_embed(
+                    album=album,
+                    album_stats=stats,
+                    ctx=ctx,
+                )
 
-                    embed = await self.album_embed(
-                        album=album,
-                        album_stats=stats,
-                        ctx=ctx,
-                    )
+                brucebase_button = await utils.create_link_button(
+                    url=f"http://brucebase.wikidot.com{album['brucebase_id']}",
+                )
+                musicbrainz_button = await utils.create_link_button(
+                    url=f"https://musicbrainz.org/release/{album['mbid']}",
+                )
 
-                    brucebase_button = await utils.create_link_button(
-                        url=f"http://brucebase.wikidot.com{album['brucebase_id']}",
-                    )
-                    musicbrainz_button = await utils.create_link_button(
-                        url=f"https://musicbrainz.org/release/{album['mbid']}",
-                    )
+                view.add_item(item=brucebase_button)
+                view.add_item(item=musicbrainz_button)
 
-                    view.add_item(item=brucebase_button)
-                    view.add_item(item=musicbrainz_button)
-
-                    await ctx.send(embed=embed, view=view)
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command=self.__class__.__name__,
-                        message=album_query,
-                    )
-                    await ctx.send(embed=embed)
+                await ctx.send(embed=embed, view=view)
+            else:
+                embed = await bot_embed.not_found_embed(
+                    command=self.__class__.__name__,
+                    message=album,
+                )
+                await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

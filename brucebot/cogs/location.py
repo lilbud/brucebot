@@ -59,72 +59,70 @@ class Location(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        city_query: str,
+        city: str,
     ) -> None:
         """Search for a city with a Bruce history.
 
         Cities can be found by either name or nickname/alias (NYC/Philly/etc.)
         """
-        city_query = ftfy.fix_text(city_query)
+        city = ftfy.fix_text(city)
 
-        async with await db.create_pool() as pool:
-            await ctx.typing()
-
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                res = await cur.execute(
-                    """
-                        WITH cities_fts AS (
-                            SELECT
-                                c.id,
-                                c.name AS city_name,
-                                s.name AS state_name,
-                                c.name || ', ' || s.state_abbrev AS name,
-                                s.state_abbrev,
-                                c.aliases,
-                                '[' || e.event_date ||
-                                    '](http://brucebase.wikidot.com' ||
-                                    e.brucebase_url || ')' AS first_event,
-                                '[' || e1.event_date ||
-                                    '](http://brucebase.wikidot.com' ||
-                                    e1.brucebase_url || ')' AS last_event,
-                                c.num_events
-                                FROM cities c
-                            LEFT JOIN states s ON s.id = c.state
-                            LEFT JOIN events e ON e.event_id = c.first_played
-                            LEFT JOIN events e1 ON e1.event_id = c.last_played
-                        )
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            res = await cur.execute(
+                """
+                    WITH cities_fts AS (
                         SELECT
-                            *
-                        FROM
-                            cities_fts,
-                            plainto_tsquery('english', %(query)s) query,
-                            to_tsvector('english', city_name || ' ' || state_name || ' '
-                                || state_abbrev || ' ' || coalesce(aliases, '')) fts,
-                            ts_rank(fts, query) rank,
-                            similarity(city_name || ' ' || state_name || ' ' ||
-                                state_abbrev || ' ' ||
-                                coalesce(aliases, ''), %(query)s) similarity
-                        WHERE query @@ fts
-                        ORDER BY similarity DESC, rank DESC NULLS LAST;
-                    """,
-                    {"query": city_query},
-                )
+                            c.id,
+                            c.name AS city_name,
+                            s.name AS state_name,
+                            c.name || ', ' || s.state_abbrev AS name,
+                            s.state_abbrev,
+                            c.aliases,
+                            '[' || e.event_date ||
+                                '](http://brucebase.wikidot.com' ||
+                                e.brucebase_url || ')' AS first_event,
+                            '[' || e1.event_date ||
+                                '](http://brucebase.wikidot.com' ||
+                                e1.brucebase_url || ')' AS last_event,
+                            c.num_events
+                            FROM cities c
+                        LEFT JOIN states s ON s.id = c.state
+                        LEFT JOIN events e ON e.event_id = c.first_played
+                        LEFT JOIN events e1 ON e1.event_id = c.last_played
+                    )
+                    SELECT
+                        *
+                    FROM
+                        cities_fts,
+                        plainto_tsquery('english', %(query)s) query,
+                        to_tsvector('english', city_name || ' ' || state_name || ' '
+                            || state_abbrev || ' ' || coalesce(aliases, '')) fts,
+                        ts_rank(fts, query) rank,
+                        similarity(city_name || ' ' || state_name || ' ' ||
+                            state_abbrev || ' ' ||
+                            coalesce(aliases, ''), %(query)s) similarity
+                    WHERE query @@ fts
+                    ORDER BY similarity DESC, rank DESC NULLS LAST;
+                """,
+                {"query": city},
+            )
 
-                city = await res.fetchone()
+            city = await res.fetchone()
 
-            if city:
-                await self.location_embed(location=city, ctx=ctx)
-            else:
-                embed = await bot_embed.not_found_embed(
-                    command="city",
-                    message=city_query,
-                )
-                await ctx.send(embed=embed)
+        if city:
+            await self.location_embed(location=city, ctx=ctx)
+        else:
+            embed = await bot_embed.not_found_embed(
+                command="city",
+                message=city,
+            )
+            await ctx.send(embed=embed)
 
     @location.command(
         name="state",
@@ -135,15 +133,13 @@ class Location(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        state_query: str,
+        state: str,
     ) -> None:
         """Search for a state with a Bruce history.
 
         States can be found by either name or abbreviation.
         """
         async with await db.create_pool() as pool:
-            await ctx.typing()
-
             async with (
                 pool.connection() as conn,
                 conn.cursor(
@@ -183,7 +179,7 @@ class Location(commands.Cog):
                         WHERE query @@ fts
                         ORDER BY similarity DESC, rank DESC NULLS LAST;
                     """,
-                    {"query": state_query},
+                    {"query": state},
                 )
 
                 state = await res.fetchone()
@@ -193,7 +189,7 @@ class Location(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command="state",
-                    message=state_query,
+                    message=state,
                 )
                 await ctx.send(embed=embed)
 
@@ -206,15 +202,13 @@ class Location(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        country_query: str,
+        country: str,
     ) -> None:
         """Search for a country with a Bruce history.
 
         Countries can be found by either name or abbreviation.
         """
         async with await db.create_pool() as pool:
-            await ctx.typing()
-
             async with (
                 pool.connection() as conn,
                 conn.cursor(
@@ -253,7 +247,7 @@ class Location(commands.Cog):
                     WHERE query @@ fts
                     ORDER BY similarity DESC, rank DESC NULLS LAST;
                     """,
-                    {"query": country_query},
+                    {"query": country},
                 )
 
                 country = await res.fetchone()
@@ -263,7 +257,7 @@ class Location(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command="country",
-                    message=country_query,
+                    message=country,
                 )
                 await ctx.send(embed=embed)
 

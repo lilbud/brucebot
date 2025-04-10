@@ -90,35 +90,33 @@ class Venue(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        venue_query: str,
+        venue: str,
     ) -> None:
         """Search database for venue.
 
         Venue can be found by name or alias.
         """
-        async with await db.create_pool() as pool:
-            await ctx.typing()
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            venue = await self.venue_search(venue, cur)
 
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                venue = await self.venue_search(venue_query, cur)
+            if venue is not None:
+                stats = await self.venue_stats(venue["id"], cur)
 
-                if venue is not None:
-                    stats = await self.venue_stats(venue["id"], cur)
+                embed = await self.venue_embed(venue, stats, ctx)
 
-                    embed = await self.venue_embed(venue, stats, ctx)
-
-                    await ctx.send(embed=embed)
-                else:
-                    embed = await bot_embed.not_found_embed(
-                        command=self.__class__.__name__,
-                        message=venue_query,
-                    )
-                    await ctx.send(embed=embed)
+                await ctx.send(embed=embed)
+            else:
+                embed = await bot_embed.not_found_embed(
+                    command=self.__class__.__name__,
+                    message=venue,
+                )
+                await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

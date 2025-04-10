@@ -113,7 +113,7 @@ class Setlist(commands.Cog):
                     LEFT JOIN runs r ON r.id = e.run
                     WHERE e.event_date = %(date)s
                     ORDER BY e.event_id
-                    """,
+                    """,  # noqa: E501
                 {"date": date},
             )
 
@@ -142,29 +142,11 @@ class Setlist(commands.Cog):
                     LEFT JOIN runs r ON r.id = e.run
                     WHERE e.event_id = %(event)s
                     ORDER BY e.event_id
-                    """,
+                    """,  # noqa: E501
                 {"event": event},
             )
 
             return await res.fetchall()
-
-    # async def get_nugs_release(
-    #     self,
-    #     event_id: str,
-    #     pool: AsyncConnectionPool,
-    # ) -> dict:
-    #     """Get the cover of the nugs release if there is one."""
-    #     async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-    #         res = await cur.execute(
-    #             """SELECT
-    #                 nugs_url AS url,
-    #                 name
-    #             FROM "nugs_releases"
-    #             WHERE event_id=%s;""",
-    #             (event_id,),
-    #         )
-
-    #         return await res.fetchone()
 
     async def get_releases(
         self,
@@ -226,7 +208,7 @@ class Setlist(commands.Cog):
 
         embed = await bot_embed.create_embed(
             ctx=ctx,
-            title=f"{event['event_date'].strftime('%Y-%m-%d [%a]')} {event['early_late']}",
+            title=f"{event['event_date'].strftime('%Y-%m-%d [%a]')} {event['early_late']}",  # noqa: E501
             description="\n".join(description),
             url=f"http://brucebase.wikidot.com{event['brucebase_url']}",
         )
@@ -251,7 +233,10 @@ class Setlist(commands.Cog):
             notes = await self.get_event_notes(event_id=event["event_id"], cur=cur)
 
         if len(setlist) == 0:
-            if event["event_date"] > datetime.datetime.now().date():
+            if (
+                event["event_date"]
+                > datetime.datetime.now(tz=datetime.timezone.utc).date()
+            ):
                 embed.add_field(
                     name="Setlist:",
                     value="_Event Hasn't Happened Yet_",
@@ -278,8 +263,6 @@ class Setlist(commands.Cog):
                 )
 
         if len(notes) > 0:
-            # embed.add_field(name="", value="-" * 48, inline=False)
-
             embed.add_field(
                 name="Setlist Notes:",
                 value=f"{re.sub("''", "'", '\n'.join(notes))}",
@@ -312,7 +295,7 @@ class Setlist(commands.Cog):
         async with await db.create_pool() as pool:
             date = await self.get_latest_setlist(pool=pool)
 
-            await ctx.invoke(self.bot.get_command("setlist"), date_query=date)
+            await ctx.invoke(self.bot.get_command("setlist"), date=date)
 
     @commands.hybrid_command(
         name="setlist",
@@ -324,32 +307,30 @@ class Setlist(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        date_query: str = "",
+        date: str = "",
     ) -> None:
         """Fetch setlists for a given date.
 
         Note: date must be past, not a future date.
         """
         async with await db.create_pool() as pool:
-            await ctx.typing()
-
-            if re.search(r"\/(gig|rehearsal|nogig|recording|nobruce):", date_query):
-                event = await self.parse_brucebase_url(date_query, pool)
+            if re.search(r"\/(gig|rehearsal|nogig|recording|nobruce):", date):
+                event = await self.parse_brucebase_url(date, pool)
 
                 if event:
                     events = await self.get_event_by_id(event["id"], pool)
 
-            elif date_query == "":
+            elif date == "":
                 event = await self.get_latest_setlist(pool=pool)
 
                 if event:
                     events = await self.get_event_by_id(event["id"], pool)
 
-            elif re.search(r"\d{8}-\d{2}", date_query):  # databruce_id
-                events = await self.get_event_by_id(date_query, pool)
+            elif re.search(r"\d{8}-\d{2}", date):  # databruce_id
+                events = await self.get_event_by_id(date, pool)
 
             else:
-                date = await utils.date_parsing(date_query)
+                date = await utils.date_parsing(date)
 
                 try:
                     events = await self.get_events_by_exact_date(
@@ -359,7 +340,7 @@ class Setlist(commands.Cog):
                 except (ParserError, AttributeError):
                     embed = discord.Embed(
                         title="Incorrect Date Format",
-                        description=f"Failed to parse given date: `{date_query}`",
+                        description=f"Failed to parse given date: `{date}`",
                     )
 
                     await ctx.send(embed=embed)
@@ -391,7 +372,7 @@ class Setlist(commands.Cog):
             except UnboundLocalError:
                 embed = await bot_embed.not_found_embed(
                     command=self.__class__.__name__,
-                    message=date_query,
+                    message=date,
                 )
 
                 await ctx.send(embed=embed)

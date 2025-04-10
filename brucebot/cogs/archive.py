@@ -62,30 +62,30 @@ class Archive(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        date_query: str = "",
+        date: str = "",
     ) -> None:
-        async with await db.create_pool() as pool:  # noqa: SIM117
-            async with (
-                pool.connection() as conn,
-                conn.cursor(
-                    row_factory=dict_row,
-                ) as cur,
-            ):
-                if date_query:
-                    date = await utils.date_parsing(date_query)
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
+            if date:
+                date = await utils.date_parsing(date)
 
-                    try:
-                        date.strftime("%Y-%m-%d")
-                    except AttributeError:
-                        embed = await bot_embed.not_found_embed(
-                            command=self.__class__.__name__,
-                            message=date_query,
-                        )
-                        await ctx.send(embed=embed)
-                        return
+                try:
+                    date.strftime("%Y-%m-%d")
+                except AttributeError:
+                    embed = await bot_embed.not_found_embed(
+                        command=self.__class__.__name__,
+                        message=date,
+                    )
+                    await ctx.send(embed=embed)
+                    return
 
-                    result = await cur.execute(
-                        """
+                result = await cur.execute(
+                    """
                         SELECT
                             e.event_date,
                             a.archive_url,
@@ -94,23 +94,23 @@ class Archive(commands.Cog):
                         LEFT JOIN events e USING(event_id)
                         WHERE e.event_date::text = %(query)s
                         """,
-                        {"query": date.strftime("%Y-%m-%d")},
-                    )
+                    {"query": date.strftime("%Y-%m-%d")},
+                )
 
-                    shows = await result.fetchall()
+                shows = await result.fetchall()
 
-                    if shows:
-                        await self.archive_embed(date, shows, ctx)
-                    else:
-                        embed = await bot_embed.not_found_embed(
-                            command=self.__class__.__name__,
-                            message=date_query,
-                        )
-                        await ctx.send(embed=embed)
-
+                if shows:
+                    await self.archive_embed(date, shows, ctx)
                 else:
-                    result = await cur.execute(
-                        """
+                    embed = await bot_embed.not_found_embed(
+                        command=self.__class__.__name__,
+                        message=date,
+                    )
+                    await ctx.send(embed=embed)
+
+            else:
+                result = await cur.execute(
+                    """
                         SELECT
                             e.event_date,
                             a.archive_url,
@@ -119,12 +119,12 @@ class Archive(commands.Cog):
                         LEFT JOIN events e USING(event_id)
                         ORDER BY a.created_at DESC LIMIT 10
                         """,
-                    )
+                )
 
-                    shows = await result.fetchall()
+                shows = await result.fetchall()
 
-                    if shows:
-                        await self.archive_latest(shows, ctx)
+                if shows:
+                    await self.archive_latest(shows, ctx)
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -226,18 +226,18 @@ class Song(commands.Cog):
                 row_factory=dict_row,
             ) as cur,
         ):
-            song = await utils.song_find_fuzzy(song, cur)
+            song_match = await utils.song_find_fuzzy(song, cur)
 
-            if song:
+            if song_match:
                 view = discord.ui.View()
 
                 release = await self.get_first_release(
-                    song_id=song["id"],
+                    song_id=song_match["id"],
                     cur=cur,
                 )
 
                 song_info = await self.get_song_info(
-                    song_id=song["id"],
+                    song_id=song_match["id"],
                     cur=cur,
                 )
 
@@ -252,7 +252,7 @@ class Song(commands.Cog):
 
                 brucebase_button = discord.ui.Button(
                     style="link",
-                    url=f"http://brucebase.wikidot.com{song['brucebase_url']}",
+                    url=f"http://brucebase.wikidot.com{song_match['brucebase_url']}",
                     label="Brucebase",
                 )
 
@@ -290,16 +290,16 @@ class Song(commands.Cog):
                 row_factory=dict_row,
             ) as cur,
         ):
-            song = await utils.song_find_fuzzy(song, cur)
+            song_match = await utils.song_find_fuzzy(song, cur)
 
-            if song:
+            if song_match:
                 song_info = await self.get_song_info(
-                    song_id=song["id"],
+                    song_id=song_match["id"],
                     cur=cur,
                 )
 
                 tour_stats = await self.get_count_by_tour(
-                    song["id"],
+                    song_match["id"],
                     cur,
                 )
 
@@ -346,16 +346,16 @@ class Song(commands.Cog):
                 row_factory=dict_row,
             ) as cur,
         ):
-            song = await utils.song_find_fuzzy(song, cur)
+            song_match = await utils.song_find_fuzzy(song, cur)
 
-            if song:
+            if song_match:
                 song_info = await self.get_song_info(
-                    song_id=song["id"],
+                    song_id=song_match["id"],
                     cur=cur,
                 )
 
                 year_stats = await self.get_count_by_year(
-                    song["id"],
+                    song_match["id"],
                     cur,
                 )
 
@@ -419,9 +419,9 @@ class Song(commands.Cog):
                 row_factory=dict_row,
             ) as cur,
         ):
-            song = await utils.song_find_fuzzy(song, cur)
+            song_match = await utils.song_find_fuzzy(song, cur)
 
-            if song:
+            if song_match:
                 res = await cur.execute(
                     """SELECT
                             count(sn.snippet_id) AS count,
@@ -434,30 +434,30 @@ class Song(commands.Cog):
                         FROM snippets sn
                         LEFT JOIN events e ON e.event_id = sn.event_id
                         WHERE snippet_id = %s""",
-                    (song["id"],),
+                    (song_match["id"],),
                 )
 
                 snippet = await res.fetchone()
 
                 snippet_songs = await self.snippet_song_count(
-                    song_id=song["id"],
+                    song_id=song_match["id"],
                     cur=cur,
                 )
 
                 release = await self.get_first_release(
-                    song_id=song["id"],
+                    song_id=song_match["id"],
                     cur=cur,
                 )
 
                 song_info = await self.get_song_info(
-                    song_id=song["id"],
+                    song_id=song_match["id"],
                     cur=cur,
                 )
 
                 embed = await bot_embed.create_embed(
                     ctx=ctx,
                     title=f"{song_info['song_name']} (snippet)",
-                    url=f"http://brucebase.wikidot.com{song['brucebase_url']}",
+                    url=f"http://brucebase.wikidot.com{song_info['brucebase_url']}",
                 )
 
                 if release:

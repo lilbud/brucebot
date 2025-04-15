@@ -167,20 +167,27 @@ class Song(commands.Cog):
         )
 
         if song["num_plays_public"] > 0:
-            first_date_value = "None"
-            last_date_value = "None"
+            if song["first_date"]:
+                first_played = song["first_date"]
+            else:
+                first_played = song["first_event"]
+
+            if song["last_date"]:  # noqa: SIM108
+                last_played = song["last_date"]
+            else:
+                last_played = song["last_event"]
 
             first_date_value = await utils.format_link(
                 url=f"http://brucebase.wikidot.com{song['first_url']}",
-                text=song["first_date"],
+                text=first_played,
             )
-
-            gap = await self.calc_show_gap(cur=cur, last_show=song["last_event"])
 
             last_date_value = await utils.format_link(
                 url=f"http://brucebase.wikidot.com{song['last_url']}",
-                text=f"{song['last_date']}",
+                text=last_played,
             )
+
+            gap = await self.calc_show_gap(cur=cur, last_show=song["last_event"])
 
             embed.add_field(
                 name="First Played:",

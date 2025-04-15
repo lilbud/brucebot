@@ -36,10 +36,36 @@ class Archive(commands.Cog):
         ctx: commands.Context,
     ) -> None:
         """Embed for getting results from Archive.org."""
+        embed = await bot_embed.create_embed(
+            ctx=ctx,
+            title=f"Radio Nowhere @ archive.org results for:\n{date}",
+            description="",
+            url="",
+        )
+
+        links = []
+
+        for index, show in enumerate(shows, start=1):
+            added_date = show["created_at"].strftime("%Y-%m-%d %I:%M %p")
+            row = f"{index}. [{show['archive_url'][28:]}]({show['archive_url']})\n\tAdded: {added_date}"  # noqa: E501
+
+            links.append(row)
+
+        embed.add_field(name="", value="\n".join(links))
+
+        await ctx.send(embed=embed)
+
+    async def archive_menu(
+        self,
+        date: str,
+        shows: dict,
+        ctx: commands.Context,
+    ) -> None:
+        """Embed for getting results from Archive.org."""
         menu = await viewmenu.create_dynamic_menu(
             ctx=ctx,
             page_counter="Page $/&",
-            rows=6,
+            rows=10,
             title=f"Radio Nowhere @ archive.org results for:\n{date}",
         )
 
@@ -100,7 +126,10 @@ class Archive(commands.Cog):
                 shows = await result.fetchall()
 
                 if shows:
-                    await self.archive_embed(date, shows, ctx)
+                    if len(shows) > 10:
+                        await self.archive_menu(date, shows, ctx)
+                    else:
+                        await self.archive_embed(date, shows, ctx)
                 else:
                     embed = await bot_embed.not_found_embed(
                         command=self.__class__.__name__,

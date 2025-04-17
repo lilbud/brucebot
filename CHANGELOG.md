@@ -46,3 +46,4 @@
 - 2025-04-08 - converted all commands to hybrid commands. Which allows both the newer slash commands AND the classic prefix commands.
 - 2025-04-09 - update song embed brucebase button to use correct link
 - 2025-04-15 - update archive link embed to only send the menu if there are more than 10 links for given date. Which as of now is none.
+- 2025-04-17 - fixed setlist command sending a "nopages" error embed when a view menu with no pages tries to send.

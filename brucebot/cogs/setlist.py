@@ -4,6 +4,8 @@ from pathlib import Path
 
 import discord
 import psycopg
+import reactionmenu
+import reactionmenu.errors
 from cogs.bot_stuff import bot_embed, db, utils, viewmenu
 from dateutil.parser import ParserError
 from discord.ext import commands
@@ -369,7 +371,8 @@ class Setlist(commands.Cog):
                     menu.add_pages(embeds)
 
                     await menu.start()
-            except UnboundLocalError:
+
+            except (UnboundLocalError, reactionmenu.errors.NoPages):
                 embed = await bot_embed.not_found_embed(
                     command=self.__class__.__name__,
                     message=date,

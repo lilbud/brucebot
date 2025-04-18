@@ -39,8 +39,8 @@ class Song(commands.Cog):
             """
             SELECT
                 CASE
-                    WHEN t.start_year = t.end_year THEN t.start_year::text
-                    ELSE t.start_year || '-' || t.end_year
+                    WHEN to_char(MIN(e.event_date), 'YYYY') = to_char(MAX(e.event_date), 'YYYY') THEN to_char(MIN(e.event_date), 'YYYY')
+                    ELSE to_char(MIN(e.event_date), 'YYYY') || '-' || to_char(MAX(e.event_date), 'YYYY')
                 END as years,
                 t.tour_name AS tour,
                 count(*)
@@ -51,7 +51,7 @@ class Song(commands.Cog):
                 s.song_id = %(song)s
                 AND t.id <> ALL(ARRAY[43, 20, 23])
                 AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
-            GROUP BY t.tour_name, t.start_year, t.end_year
+            GROUP BY t.tour_name
             ORDER BY count(*) DESC
             """,  # noqa: E501
             {"song": song_id},
@@ -212,9 +212,7 @@ class Song(commands.Cog):
 
     @commands.hybrid_group(
         name="song",
-        fallback="song",
-        aliases=["s"],
-        description="Get stats on a song",
+        description="Get stats on a specific song",
         usage="<song>",
     )
     async def song_find(

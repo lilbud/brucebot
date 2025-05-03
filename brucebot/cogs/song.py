@@ -67,27 +67,29 @@ class Song(commands.Cog):
                 s.id,
                 s.song_name,
                 s.brucebase_url,
-                e.event_id AS first_event,
-                e.event_date AS first_date,
-                e.brucebase_url AS first_url,
-                e1.event_id AS last_event,
-                e1.event_date AS last_date,
-                e1.brucebase_url AS last_url,
+                MIN(e.event_id) AS first_event,
+                MIN(e.event_date) FILTER (WHERE e.event_id = e.event_id) AS first_date,
+                MIN(e.brucebase_url) FILTER (WHERE e.event_id = e.event_id) AS first_url,
+                MAX(e.event_id) AS last_event,
+                    MAX(e.event_date) FILTER (WHERE e.event_id = e.event_id) AS last_date,
+                MAX(e.brucebase_url) FILTER (WHERE e.event_id = e.event_id) AS last_url,
                 s.num_plays_public,
+                CASE WHEN s.num_plays_public > 0 THEN
                 round((s.num_plays_public /
                     (SELECT COUNT(event_id) FROM "events"
-                    WHERE event_certainty=ANY(ARRAY['Confirmed', 'Probable']))::float * 100)::numeric, 2) AS frequency,
-                coalesce(s1.num_post_release, 0) AS num_post_release,
-                s.num_plays_private,
+                    WHERE event_certainty=ANY(ARRAY['Confirmed', 'Probable']) AND event_id > s.first_played)::float * 100)::numeric, 2)
+                ELSE 0 END
+                AS frequency,
+                coalesce(min(s1.num_post_release), 0) AS num_post_release,
                 s.num_plays_snippet,
                 s.opener,
                 s.closer,
                 s.original_artist
             FROM "songs" s
-            LEFT JOIN "events" e ON e.event_id = s.first_played
-            LEFT JOIN "events" e1 ON e1.event_id = s.last_played
+            LEFT JOIN "events" e ON e.event_id = s.first_played OR e.event_id = s.last_played
             LEFT JOIN "songs_after_release" s1 ON s1.song_id = s.id
             WHERE s.id = %(song_id)s
+            GROUP BY s.id
             """,  # noqa: E501
             {"song_id": song_id},
         )
@@ -101,8 +103,12 @@ class Song(commands.Cog):
     ) -> dict:
         """Get info on the first release of a given song."""
         res = await cur.execute(
-            """SELECT * FROM "songs_first_release"
-                WHERE song_id=%s ORDER BY release_date::date ASC;""",
+            """SELECT
+                    *
+                FROM songs_first_release s
+                LEFT JOIN releases r ON r.id = s.release_id
+                WHERE song_id = %s
+                """,
             (song_id,),
         )
 
@@ -141,7 +147,9 @@ class Song(commands.Cog):
         )
 
         try:
-            embed.set_thumbnail(url=release["thumb"])
+            embed.set_thumbnail(
+                url=f"https://coverartarchive.org/release-group/{release['mbid']}/front-500",
+            )
         except TypeError:
             embed.set_thumbnail(
                 url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
@@ -150,7 +158,7 @@ class Song(commands.Cog):
         if release:
             embed.add_field(
                 name="Original Release:",
-                value=f"{release['name']} _({release['release_date']})_",
+                value=f"{release['name']} _({release['release_date'].strftime('%B %d, %Y')})_",  # noqa: E501
                 inline=False,
             )
 
@@ -203,10 +211,11 @@ class Song(commands.Cog):
             embed.add_field(name="Closer:", value=song["closer"])
             embed.add_field(name="Frequency:", value=f"{song['frequency']}%")
 
-            embed.add_field(
-                name="Snippet:",
-                value=f"{song['num_plays_snippet']}",
-            )
+            if song["num_plays_snippet"] > 0:
+                embed.add_field(
+                    name="Snippet:",
+                    value=f"{song['num_plays_snippet']}",
+                )
 
         return embed
 
@@ -214,6 +223,7 @@ class Song(commands.Cog):
         name="song",
         description="Get stats on a specific song",
         usage="<song>",
+        aliases=["s"],
     )
     async def song_find(
         self,
@@ -261,7 +271,14 @@ class Song(commands.Cog):
                     label="Brucebase",
                 )
 
+                musicbrainz_button = discord.ui.Button(
+                    style="link",
+                    url=f"https://musicbrainz.org/release-group/{release['mbid']}",
+                    label="Album on Musicbrainz",
+                )
+
                 view.add_item(item=brucebase_button)
+                view.add_item(item=musicbrainz_button)
 
                 await ctx.send(embed=embed, view=view)
 

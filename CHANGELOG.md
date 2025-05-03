@@ -49,3 +49,9 @@
 - 2025-04-17
   - fixed setlist command sending a "nopages" error embed when a view menu with no pages tries to send.
   - fixed song tour command, removed two generated columns and never changed the command to match.
+- 2025-05-03
+  - updated `songs_first_release` view to be much simpler. Rather than getting every release for a song, it only gets the first, and includes the release_id. This can then easily be used with a JOIN in SQL to get the rest of the info.
+  - updated frequency formula based on Dripfield.pro's method. The original method was `num_plays_public/num_events`, which was sort of incorrect, as it counted *every* event. When in reality, the "correct" way is to count events that have happened since the song premiered. This doesn't change the values a ton, but they should be slightly more correct now.
+  - Added musicbrainz link to song embed.
+  - fixed venue links not showing up right. Somehow, the `venues_text` table got wiped and everything set to NULL. Really not sure how that happened, as the SQL command is still in the backups.
+  - added tour leg and event run to embed description

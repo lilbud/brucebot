@@ -103,11 +103,11 @@ class Setlist(commands.Cog):
                 """
                     SELECT
                         e.*,
-                        coalesce(e.early_late, '') AS early_late,
-                        r.name AS run,
                         'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
                         v.formatted_loc AS venue_loc,
-                        coalesce(t1.name, t.tour_name) AS tour
+                        t1.name AS tour_leg,
+                        r.name AS run,
+                        t.tour_name AS tour
                     FROM "events" e
                     LEFT JOIN tours t ON t.id = e.tour_id
                     LEFT JOIN venues_text v ON v.id = e.venue_id
@@ -126,17 +126,20 @@ class Setlist(commands.Cog):
         event: str,
         pool: AsyncConnectionPool,
     ) -> list["str"]:
-        """Get event for a given id."""
+        """Get event for a given id.
+
+        Used when the input is the Databruce ID (YYYYMMDD-XX).
+        """
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             res = await cur.execute(
                 """
                     SELECT
                         e.*,
-                        coalesce(e.early_late, '') AS early_late,
-                        r.name AS run,
                         'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
                         v.formatted_loc AS venue_loc,
-                        coalesce(t1.name, t.tour_name) AS tour
+                        t1.name AS tour_leg,
+                        r.name AS run,
+                        t.tour_name AS tour
                     FROM "events" e
                     LEFT JOIN tours t ON t.id = e.tour_id
                     LEFT JOIN venues_text v ON v.id = e.venue_id
@@ -159,13 +162,15 @@ class Setlist(commands.Cog):
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             res = await cur.execute(
                 """
-                SELECT unnest(array_remove(array[nugs, archive], NULL)) AS links FROM (
+                SELECT unnest(array_remove(array[nugs, archive, release], NULL)) AS links FROM (
                     SELECT
                         '[' || n.name || '](' || n.nugs_url || ')' AS nugs,
-                        '[Archive.org](' || a.archive_url || ')' AS archive
+                        '[Archive.org](' || a.archive_url || ')' AS archive,
+                        coalesce(r.name, null) AS release
                     FROM events e
                     LEFT JOIN archive_links a USING(event_id)
                     LEFT JOIN "nugs_releases" n USING(event_id)
+                    LEFT JOIN releases r USING (event_id)
                     WHERE e.event_id=%(event)s
                 ) t
                 """,
@@ -199,6 +204,14 @@ class Setlist(commands.Cog):
 
         if event["event_title"]:
             description.append(f"**Title:** {event['event_title']}")
+
+        if event["tour"]:
+            text = f"**Tour:** {event['tour']}"
+
+            if event["tour_leg"]:
+                text = f"**Tour/Leg:** {event['tour']} / {event['tour_leg']}"
+
+            description.append(text)
 
         if event["event_date_note"]:
             description.append(f"**Notes:**\n- {event['event_date_note']}")
@@ -272,7 +285,6 @@ class Setlist(commands.Cog):
 
         event_info = {
             "run": await self.get_run(event["event_id"], pool),
-            "tour": event["tour"],
             "event": event["event_certainty"],
             "setlist": event["setlist_certainty"],
         }

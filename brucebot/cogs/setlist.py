@@ -221,9 +221,16 @@ class Setlist(commands.Cog):
         if len(releases) > 0:
             description.append(f"**Releases:** {', '.join(releases)}")
 
+        title = f"{event['event_date'].strftime('%Y-%m-%d [%a]')}"
+
+        if event["early_late"]:
+            title = (
+                f"{event['event_date'].strftime('%Y-%m-%d [%a]')} {event['early_late']}"
+            )
+
         embed = await bot_embed.create_embed(
             ctx=ctx,
-            title=f"{event['event_date'].strftime('%Y-%m-%d [%a]')} {event['early_late']}",  # noqa: E501
+            title=title,
             description="\n".join(description),
             url=f"http://brucebase.wikidot.com{event['brucebase_url']}",
         )

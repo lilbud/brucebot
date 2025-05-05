@@ -84,7 +84,8 @@ class Song(commands.Cog):
                 s.num_plays_snippet,
                 s.opener,
                 s.closer,
-                s.original_artist
+                s.original_artist,
+                s.original
             FROM "songs" s
             LEFT JOIN "events" e ON e.event_id = s.first_played OR e.event_id = s.last_played
             LEFT JOIN "songs_after_release" s1 ON s1.song_id = s.id
@@ -162,7 +163,7 @@ class Song(commands.Cog):
                 inline=False,
             )
 
-        if song["original_artist"] and song["original_artist"] != "Bruce Springsteen":
+        if song["original"] is False:
             embed.add_field(
                 name="Original Artist:",
                 value=song["original_artist"],

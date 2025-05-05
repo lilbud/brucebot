@@ -56,4 +56,4 @@
   - fixed venue links not showing up right. Somehow, the `venues_text` table got wiped and everything set to NULL. Really not sure how that happened, as the SQL command is still in the backups.
   - added tour leg and event run to embed description
 - 2025-05-04
-  - fixed setlist embed showing "None" for an event without an early/late marker. 
+  - fixed setlist embed showing "None" for an event without an early/late marker.

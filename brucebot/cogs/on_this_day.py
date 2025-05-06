@@ -44,7 +44,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                 date.strftime("%m-%d")
             except AttributeError:
                 embed = await bot_embed.not_found_embed(
-                    command="Events",
+                    command="Events on this day",
                     message=date,
                 )
                 await ctx.send(embed=embed)
@@ -53,21 +53,20 @@ class OnThisDay(commands.Cog, name="On This Day"):
             res = await cur.execute(
                 """
                     SELECT
-                        e.formatted_date ||
-                        CASE
-                            WHEN e1.event_date_note LIKE 'Placeholder%%' THEN ' #' ELSE ''
-                        END AS date,
+                        e.event_type,
+                        to_char(e.event_date, 'YYYY-MM-DD [Dy]')||
+                        CASE WHEN e.event_date_note LIKE '%%Placeholder%%'
+                            THEN ' #' ELSE '' END as date,
                         b.name AS artist,
-                        e.venue_loc AS location,
-                        e.event_url AS url
-                    FROM "events_with_info" e
-                    LEFT JOIN "events" e1 USING(event_id)
+                        v.formatted_loc AS location,
+                        e.brucebase_url AS url
+                    FROM "events" e
                     LEFT JOIN bands b ON b.id = e.artist
-                    WHERE e.event_date::text LIKE %(name)s
-                    AND e.event_url NOT LIKE '/nogig:'
-                    ORDER BY e.event_date, e.event_url;
-                    """,  # noqa: E501
-                {"name": f"%{date.strftime('%m-%d')}"},
+                    LEFT JOIN venues_text v ON v.id = e.venue_id
+                    WHERE e.event_date::text LIKE %(date)s
+                    ORDER BY e.event_id
+                    """,
+                {"date": f"%{date.strftime('%m-%d')}"},
             )
 
             otd_results = await res.fetchall()
@@ -81,7 +80,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                 )
 
                 data = [
-                    f"**{row['artist']}:**\n- [{row['date']} - {row['location']}]({row['url']})\n"  # noqa: E501
+                    f"**{row['artist']}:**\n- [{row['date']} - {row['location']}](http://brucebase.wikidot.com{row['url']}) [{row['event_type']}]\n"  # noqa: E501
                     for row in otd_results
                 ]
 
@@ -91,7 +90,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                 await menu.start()
             else:
                 embed = await bot_embed.not_found_embed(
-                    command="events",
+                    command="Events on this day",
                     message=date,
                 )
                 await ctx.send(embed=embed)

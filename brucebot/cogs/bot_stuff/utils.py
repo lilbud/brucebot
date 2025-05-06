@@ -1,12 +1,13 @@
 import datetime
 from urllib.parse import urlparse
 
+import dateparser
 import discord
 import psycopg
 from dateutil import parser
 
 
-async def date_parsing(date: str) -> datetime.datetime | Exception:
+async def date_parsing(date: str) -> datetime.datetime | str:
     """Input date parsing.
 
     Attempt to parse the provided the date into a Python datetime object.
@@ -14,9 +15,9 @@ async def date_parsing(date: str) -> datetime.datetime | Exception:
     own error if date is required.
     """
     try:
-        return parser.parse(date).date()
-    except parser.ParserError as e:
-        return e
+        return dateparser.parse(date).date()
+    except (parser.ParserError, AttributeError):
+        return date
 
 
 async def format_link(url: str, text: str) -> str:

@@ -272,14 +272,16 @@ class Song(commands.Cog):
                     label="Brucebase",
                 )
 
-                musicbrainz_button = discord.ui.Button(
-                    style="link",
-                    url=f"https://musicbrainz.org/release-group/{release['mbid']}",
-                    label="Album on Musicbrainz",
-                )
-
                 view.add_item(item=brucebase_button)
-                view.add_item(item=musicbrainz_button)
+
+                if release and release["mbid"]:
+                    musicbrainz_button = discord.ui.Button(
+                        style="link",
+                        url=f"https://musicbrainz.org/release-group/{release['mbid']}",
+                        label="Album on Musicbrainz",
+                    )
+
+                    view.add_item(item=musicbrainz_button)
 
                 await ctx.send(embed=embed, view=view)
 

@@ -3,5 +3,5 @@ psycopg
 dateparser
 python-dotenv
 reactionmenu
-psycopg_pool
+psycopg[binary,pool]
 ftfy

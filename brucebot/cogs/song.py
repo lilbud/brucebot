@@ -124,8 +124,9 @@ class Song(commands.Cog):
         res = await cur.execute(
             """
             SELECT
-                MAX(event_num) - MIN(event_num) FILTER (WHERE event_id=%s) AS gap
+                count(event_id) AS gap
             FROM "events"
+            WHERE event_id > %s AND event_date < NOW()
             """,
             (last_show,),
         )

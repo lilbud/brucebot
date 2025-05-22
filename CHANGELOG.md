@@ -64,3 +64,4 @@
 - 2025-05-22:
   - updated columns on setlist_by_set and never pushed the change
   - somehow the tours fts generated column got nuked, readded to the table
+  - fixed relation command using the wrong column name (relation_name -> name)

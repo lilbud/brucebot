@@ -61,3 +61,5 @@
   - fixed `on this day` command. For some reason, it was defaulting to a full date no matter what was entered. So, something like `!otd 11-18` would return "2025-11-18", and it would fail trying to find events because it was trying to find a full date instead of `MM-DD`. This should be fixed now. Only quirk is that entering dates that don't exist (like May 32) will default to the current date with the wrong day as the year (so May 32 results in 2032-05-06 today). It still works so this is fine.
 - 2025-05-14
   - fixed song gap calculation on the song embed. It was counting number of shows since a song was last played, but it was going from the last event in the table, including ones that haven't happened yet. Redid it so it should be more accurate now.
+- 2025-05-22:
+  - updated columns on setlist_by_set and never pushed the change

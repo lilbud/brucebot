@@ -244,8 +244,8 @@ class Setlist(commands.Cog):
                 FROM "setlists_by_set_and_date" s
                 LEFT JOIN "events" e USING (event_id)
                 WHERE s.event_id = %(event_id)s
-                GROUP BY s.event_id, s.set_name, s.setlist, s.min
-                ORDER BY s.min
+                GROUP BY s.event_id, s.set_name, s.setlist, s.set_order
+                ORDER BY s.set_order
                 """,
                 event,
             )

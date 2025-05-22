@@ -63,3 +63,4 @@
   - fixed song gap calculation on the song embed. It was counting number of shows since a song was last played, but it was going from the last event in the table, including ones that haven't happened yet. Redid it so it should be more accurate now.
 - 2025-05-22:
   - updated columns on setlist_by_set and never pushed the change
+  - somehow the tours fts generated column got nuked, readded to the table

@@ -65,3 +65,6 @@
   - updated columns on setlist_by_set and never pushed the change
   - somehow the tours fts generated column got nuked, readded to the table
   - fixed relation command using the wrong column name (relation_name -> name)
+- 2025-05-23:
+  - Experimenting with moving database to Supabase from Heroku. Since 2023 I've had both the bot and database on Heroku because I got credits to cover the hosting cost (around $12 a month). Those will run out this summer, so I've been planning on moving the bot/DB elsewhere. I figured on DigitalOcean, which is only $5/mo. Unmanaged database however, and I'd have to set it all up manually. Supabase has a generous free plan, so I figured give it a shot now.
+  - The only difference seems to be it's a tad slower to respond to commands, but nothing major.

@@ -14,4 +14,12 @@ async def create_pool() -> AsyncConnectionPool:
         case "local":
             return AsyncConnectionPool(conninfo=os.getenv("LOCAL_DB_URL"), open=False)
         case "heroku":
-            return AsyncConnectionPool(conninfo=os.getenv("DATABASE_URL"), open=False)
+            return AsyncConnectionPool(
+                conninfo=os.getenv("HEROKU_DATABASE_URL"),
+                open=False,
+            )
+        case "supabase":
+            return AsyncConnectionPool(
+                conninfo=os.getenv("SUPABASE_DATABASE_URL"),
+                open=False,
+            )

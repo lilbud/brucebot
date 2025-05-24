@@ -1,8 +1,28 @@
 import os
 import sys
 
+import psycopg
 from dotenv import load_dotenv
 from psycopg_pool import AsyncConnectionPool
+
+
+def load_db() -> psycopg.Connection:
+    """Load DB and return connection."""
+    load_dotenv()
+
+    match sys.argv[2]:
+        case "local":
+            conninfo = os.getenv("LOCAL_DB_URL")
+
+        case "heroku":
+            conninfo = os.getenv("HEROKU_DATABASE_URL")
+
+        case "supabase":
+            conninfo = os.getenv("SUPABASE_DATABASE_URL")
+
+    return psycopg.connect(
+        conninfo=conninfo,
+    )
 
 
 async def create_pool() -> AsyncConnectionPool:

@@ -88,7 +88,7 @@ class Bootleg(commands.Cog):
                 b.media_type,
                 v.formatted_loc AS venue_loc
             FROM "bootlegs" b
-            LEFT JOIN "events_with_info" e ON e.event_id = b.event_id
+            LEFT JOIN "events" e ON e.event_id = b.event_id
             LEFT JOIN "venues_text" v ON v.id = e.venue_id
             WHERE e.event_date = %(query)s
             ORDER BY title ASC

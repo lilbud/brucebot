@@ -108,7 +108,7 @@ class Relation(commands.Cog):
                         "relations",
                         plainto_tsquery('english', %(query)s) query,
                         ts_rank(fts, query) rank,
-                        SIMILARITY(%(query)s,
+                        extensions.SIMILARITY(%(query)s,
                             unaccent(name) || ' ' ||
                             coalesce(aliases, '')) similarity
                     WHERE query @@ fts

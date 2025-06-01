@@ -68,3 +68,5 @@
 - 2025-05-23:
   - Experimenting with moving database to Supabase from Heroku. Since 2023 I've had both the bot and database on Heroku because I got credits to cover the hosting cost (around $12 a month). Those will run out this summer, so I've been planning on moving the bot/DB elsewhere. I figured on DigitalOcean, which is only $5/mo. Unmanaged database however, and I'd have to set it all up manually. Supabase has a generous free plan, so I figured give it a shot now.
   - The only difference seems to be it's a tad slower to respond to commands, but nothing major.
+- 2025-06-01:
+  - fix setlist embed showing "none" for venue, as well as song erroring if a song hasn't been played

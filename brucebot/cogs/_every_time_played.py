@@ -30,7 +30,7 @@ class EveryTimePlayed(commands.Cog):
                 "songs" s,
                 plainto_tsquery('english', %(query)s) query,
                 ts_rank(fts, query) rank,
-                SIMILARITY(%(query)s, coalesce(short_name, song_name)) similarity
+                extensions.SIMILARITY(%(query)s, coalesce(short_name, song_name)) similarity
             WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;
             """,
@@ -46,7 +46,7 @@ class EveryTimePlayed(commands.Cog):
         song2: str,
         cur: psycopg.AsyncCursor,
     ) -> list[dict]:
-        """test."""
+        """Test."""
         res = await cur.execute(
             """SELECT * FROM every_time_played
                 WHERE song_name SIMILAR TO %(s1)s AND next SIMILAR TO %(s2)s
@@ -66,9 +66,12 @@ class EveryTimePlayed(commands.Cog):
         await ctx.typing()
 
         async with await db.create_pool() as pool:  # noqa: SIM117
-            async with pool.connection() as conn, conn.cursor(
-                row_factory=dict_row,
-            ) as cur:
+            async with (
+                pool.connection() as conn,
+                conn.cursor(
+                    row_factory=dict_row,
+                ) as cur,
+            ):
                 # both songs present/song anywhere
                 if ">" in argument:
                     arg_split = [song.strip() for song in argument.split(">")][0:2]

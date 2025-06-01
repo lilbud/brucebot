@@ -70,7 +70,7 @@ class Venue(commands.Cog):
                 to_tsvector('english', name || ' ' || city || ' ' ||
                     coalesce(aliases, '')) fts,
                 ts_rank(fts, query) rank,
-                similarity(name || ' ' || city || ' ' ||
+                extensions.SIMILARITY(name || ' ' || city || ' ' ||
                     coalesce(aliases, ''), %(query)s) similarity
             WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;

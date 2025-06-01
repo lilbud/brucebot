@@ -56,7 +56,7 @@ async def song_find_fuzzy(
             "songs" s,
             plainto_tsquery('simple', %(query)s) query,
             ts_rank(fts, query) rank,
-            SIMILARITY(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
+            extensions.extensions.SIMILARITY(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
         WHERE query @@ fts
         AND similarity >= 0.0415
         ORDER BY similarity DESC, rank DESC NULLS LAST LIMIT 1;

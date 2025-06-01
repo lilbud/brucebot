@@ -101,7 +101,7 @@ class Album(commands.Cog):
                 "releases" r,
                 plainto_tsquery('english', %(query)s) query,
                 ts_rank(fts, query) rank,
-                SIMILARITY(%(query)s, coalesce(short_name, name)) similarity
+                extensions.SIMILARITY(%(query)s, coalesce(short_name, name)) similarity
             WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;
             """,

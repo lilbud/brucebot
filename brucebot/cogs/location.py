@@ -104,7 +104,7 @@ class Location(commands.Cog):
                         to_tsvector('english', city_name || ' ' || state_name || ' '
                             || state_abbrev || ' ' || coalesce(aliases, '')) fts,
                         ts_rank(fts, query) rank,
-                        similarity(city_name || ' ' || state_name || ' ' ||
+                        extensions.SIMILARITY(city_name || ' ' || state_name || ' ' ||
                             state_abbrev || ' ' ||
                             coalesce(aliases, ''), %(query)s) similarity
                     WHERE query @@ fts
@@ -174,7 +174,7 @@ class Location(commands.Cog):
                             to_tsvector('english', state_name || ' ' || state_abbrev ||
                                 ' ' || country) fts,
                             ts_rank(fts, query) rank,
-                            similarity(state_name || ' ' || state_abbrev ||
+                            extensions.SIMILARITY(state_name || ' ' || state_abbrev ||
                                 ' ' || country, %(query)s) similarity
                         WHERE query @@ fts
                         ORDER BY similarity DESC, rank DESC NULLS LAST;
@@ -242,7 +242,7 @@ class Location(commands.Cog):
                         to_tsvector('english', name || ' ' || alpha_2 || ' ' ||
                             alpha_3 || coalesce(aliases, '')) fts,
                         ts_rank(fts, query) rank,
-                        similarity(name || ' ' || alpha_2 || ' ' || alpha_3 ||
+                        extensions.SIMILARITY(name || ' ' || alpha_2 || ' ' || alpha_3 ||
                             coalesce(aliases, ''), %(query)s) similarity
                     WHERE query @@ fts
                     ORDER BY similarity DESC, rank DESC NULLS LAST;

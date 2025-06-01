@@ -70,3 +70,4 @@
   - The only difference seems to be it's a tad slower to respond to commands, but nothing major.
 - 2025-06-01:
   - fix setlist embed showing "none" for venue, as well as song erroring if a song hasn't been played
+  - temporarily went back to heroku for the database. It is apparently not possible to load a dump.sql file from my local database into supabase and expect it to work. At best, several tables are nuked and are empty. At worst, those tables don't copy over at all.

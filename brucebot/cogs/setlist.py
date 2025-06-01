@@ -101,7 +101,7 @@ class Setlist(commands.Cog):
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             res = await cur.execute(
                 """
-                    SELECT
+                    SELECT DISTINCT
                         e.*,
                         'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
                         v.formatted_loc AS venue_loc,
@@ -133,7 +133,7 @@ class Setlist(commands.Cog):
         async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             res = await cur.execute(
                 """
-                    SELECT
+                    SELECT DISTINCT
                         e.*,
                         'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
                         v.formatted_loc AS venue_loc,
@@ -198,6 +198,7 @@ class Setlist(commands.Cog):
         pool: AsyncConnectionPool,
     ) -> discord.File | discord.Embed:
         """Create embed."""
+        print(event)
         venue_url = await utils.format_link(event["venue_url"], event["venue_loc"])
 
         description = [f"**Venue:** {venue_url}"]
@@ -366,6 +367,8 @@ class Setlist(commands.Cog):
 
                     await ctx.send(embed=embed)
                     return
+
+            print(len(events))
 
             try:
                 if len(events) == 1:

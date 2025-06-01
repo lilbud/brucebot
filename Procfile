@@ -1,1 +1,1 @@
-worker: python brucebot/main.py -db supabase
+worker: python brucebot/main.py -db heroku

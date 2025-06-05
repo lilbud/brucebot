@@ -100,19 +100,20 @@ class Relation(commands.Cog):
         ):
             res = await cur.execute(
                 """
-                    SELECT
-                        id,
-                        rank,
-                        similarity
-                    FROM
-                        "relations",
-                        plainto_tsquery('english', %(query)s) query,
-                        ts_rank(fts, query) rank,
-                        extensions.SIMILARITY(%(query)s,
-                            unaccent(name) || ' ' ||
-                            coalesce(aliases, '')) similarity
-                    WHERE query @@ fts
-                    ORDER BY appearances DESC, rank DESC, similarity DESC NULLS LAST LIMIT 1
+                SELECT
+                    id,
+                    rank,
+                    similarity
+                FROM
+                    "relations",
+                    plainto_tsquery('english', %(query)s) query,
+                    to_tsvector('english', unaccent("name") || ' ' || COALESCE("aliases", ''::"text")) fts,
+                    ts_rank(fts, query) rank,
+                    extensions.SIMILARITY(%(query)s,
+                        unaccent(name) || ' ' ||
+                        coalesce(aliases, '')) similarity
+                WHERE query @@ fts
+                ORDER BY appearances DESC, rank DESC, similarity DESC NULLS LAST LIMIT 1
                     """,  # noqa: E501
                 {"query": relation},
             )

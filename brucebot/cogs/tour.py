@@ -191,10 +191,11 @@ class Tour(commands.Cog):
                             t.id
                         FROM
                             "tours" t,
+                            "to_tsvector"('"english"'::"regconfig", (((((("brucebase_id" || ' '::"text") || "tour_name") || ' '::"text") || "substr"("first_show", 3)) || ' '::"text") || "substr"("last_show", 3))) fts,
                             plainto_tsquery('english', %(query)s) query
                         WHERE query @@ fts
                         ORDER BY t.num_shows DESC NULLS LAST;
-                        """,
+                        """,  # noqa: E501
                     {"query": tour},
                 )
 

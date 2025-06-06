@@ -20,6 +20,9 @@ def load_db() -> psycopg.Connection:
         case "supabase":
             conninfo = os.getenv("SUPABASE_DATABASE_URL")
 
+        case "digitalocean":
+            conninfo = os.getenv("DO_DATABASE_URL")
+
     return psycopg.connect(
         conninfo=conninfo,
     )

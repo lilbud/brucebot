@@ -1,1 +1,1 @@
-worker: python brucebot/main.py -db heroku
+worker: python brucebot/main.py -db digitalocean

@@ -45,3 +45,8 @@ async def create_pool() -> AsyncConnectionPool:
                 conninfo=os.getenv("SUPABASE_DATABASE_URL"),
                 open=False,
             )
+        case "digitalocean":
+            return AsyncConnectionPool(
+                conninfo=os.getenv("DO_DATABASE_URL"),
+                open=False,
+            )

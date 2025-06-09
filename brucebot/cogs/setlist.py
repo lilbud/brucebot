@@ -165,7 +165,7 @@ class Setlist(commands.Cog):
                 SELECT unnest(array_remove(array[nugs, archive, release], NULL)) AS links FROM (
                     SELECT
                         '[' || n.name || '](' || n.nugs_url || ')' AS nugs,
-                        '[Archive.org](' || a.archive_url || ')' AS archive,
+                        '[Archive.org](https://archive.org/details/' || a.archive_url || ')' AS archive,
                         coalesce(r.name, null) AS release
                     FROM events e
                     LEFT JOIN archive_links a USING(event_id)

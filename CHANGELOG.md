@@ -73,3 +73,5 @@
   - temporarily went back to heroku for the database. It is apparently not possible to load a dump.sql file from my local database into supabase and expect it to work. At best, several tables are nuked and are empty. At worst, those tables don't copy over at all.
 - 2025-06-04:
   - removed the FTS generated columns because they were causing all kinds of issues with supabase and digital ocean. They were just a replacement for the normal to_tsvector commands anyway.
+- 2025-06-12:
+  - fixed city location command. If a city doesn't have a state, the search was returning none no matter what. Rewrote it as a two-step process (search then city info)

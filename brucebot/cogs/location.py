@@ -76,37 +76,14 @@ class Location(commands.Cog):
         ):
             res = await cur.execute(
                 """
-                    WITH cities_fts AS (
-                        SELECT
-                            c.id,
-                            c.name AS city_name,
-                            s.name AS state_name,
-                            c.name || ', ' || s.state_abbrev AS name,
-                            s.state_abbrev,
-                            c.aliases,
-                            '[' || e.event_date ||
-                                '](http://brucebase.wikidot.com' ||
-                                e.brucebase_url || ')' AS first_event,
-                            '[' || e1.event_date ||
-                                '](http://brucebase.wikidot.com' ||
-                                e1.brucebase_url || ')' AS last_event,
-                            c.num_events
-                            FROM cities c
-                        LEFT JOIN states s ON s.id = c.state
-                        LEFT JOIN events e ON e.event_id = c.first_played
-                        LEFT JOIN events e1 ON e1.event_id = c.last_played
-                    )
                     SELECT
                         *
                     FROM
-                        cities_fts,
+                        cities c,
                         plainto_tsquery('english', %(query)s) query,
-                        to_tsvector('english', city_name || ' ' || state_name || ' '
-                            || state_abbrev || ' ' || coalesce(aliases, '')) fts,
+                        to_tsvector(unaccent(name || ' ' || coalesce(aliases, ''))) fts,
                         ts_rank(fts, query) rank,
-                        extensions.SIMILARITY(city_name || ' ' || state_name || ' ' ||
-                            state_abbrev || ' ' ||
-                            coalesce(aliases, ''), %(query)s) similarity
+                        extensions.SIMILARITY(unaccent(name || ' ' || coalesce(aliases, '')), %(query)s) similarity
                     WHERE query @@ fts
                     ORDER BY similarity DESC, rank DESC NULLS LAST;
                 """,
@@ -115,14 +92,32 @@ class Location(commands.Cog):
 
             city = await res.fetchone()
 
-        if city:
-            await self.location_embed(location=city, ctx=ctx)
-        else:
-            embed = await bot_embed.not_found_embed(
-                command="city",
-                message=city,
-            )
-            await ctx.send(embed=embed)
+            if city:
+                res = await cur.execute(
+                    """
+                    SELECT
+                        CASE WHEN c.state IS NOT NULL THEN ', ' || s.state_abbrev ELSE c.name END AS name,
+                        c.num_events,
+                        '[' || e.event_date || '](http://brucebase.wikidot.com' || e.brucebase_url || ')' as first_event,
+                        '[' || e1.event_date || '](http://brucebase.wikidot.com' || e1.brucebase_url || ')' as last_event
+                    FROM cities c
+                    LEFT JOIN states s ON s.id = c.state
+                    LEFT JOIN events e ON e.event_id = c.first_played
+                    LEFT JOIN events e1 ON e1.event_id = c.last_played
+                    WHERE c.id = %(id)s
+                    """,
+                    {"id": city["id"]},
+                )
+
+                city_info = await res.fetchone()
+
+                await self.location_embed(location=city_info, ctx=ctx)
+            else:
+                embed = await bot_embed.not_found_embed(
+                    command="city",
+                    message=city,
+                )
+                await ctx.send(embed=embed)
 
     @location.command(
         name="state",

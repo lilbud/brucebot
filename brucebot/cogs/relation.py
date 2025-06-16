@@ -36,12 +36,12 @@ class Relation(commands.Cog):
         res = await cur.execute(
             """SELECT
                 r.brucebase_url,
-                r.relation_name,
+                r.name,
                 r.appearances,
                 r.aliases,
-                e.event_date AS first_date,
+                coalesce(e.event_date::text, e.event_id) AS first_date,
                 e.brucebase_url AS first_url,
-                e1.event_date AS last_date,
+                coalesce(e1.event_date::text, e1.event_id) AS last_date,
                 e1.brucebase_url AS last_url
             FROM "relations" r
             LEFT JOIN "events" e ON e.event_id = r.first_appearance
@@ -60,7 +60,7 @@ class Relation(commands.Cog):
         """Create the song embed and sending."""
         embed = await bot_embed.create_embed(
             ctx=ctx,
-            title=relation["relation_name"],
+            title=relation["name"],
             description=f"**Nicknames:** {relation['aliases']}",
             url=f"http://brucebase.wikidot.com/relation:{relation['brucebase_url']}",
         )
@@ -85,7 +85,7 @@ class Relation(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        relation: str,
+        relation_query: str,
     ) -> None:
         """Find relation based on input.
 
@@ -109,13 +109,13 @@ class Relation(commands.Cog):
                     plainto_tsquery('english', %(query)s) query,
                     to_tsvector('english', unaccent("name") || ' ' || COALESCE("aliases", ''::"text")) fts,
                     ts_rank(fts, query) rank,
-                    extensions.SIMILARITY(%(query)s,
+                    similarity(%(query)s,
                         unaccent(name) || ' ' ||
                         coalesce(aliases, '')) similarity
                 WHERE query @@ fts
                 ORDER BY appearances DESC, rank DESC, similarity DESC NULLS LAST LIMIT 1
                     """,  # noqa: E501
-                {"query": relation},
+                {"query": relation_query},
             )
 
             relation = await res.fetchone()
@@ -132,7 +132,7 @@ class Relation(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command=self.__class__.__name__,
-                    message=relation,
+                    message=relation_query,
                 )
                 await ctx.send(embed=embed)
 

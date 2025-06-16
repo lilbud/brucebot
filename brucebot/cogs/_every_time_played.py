@@ -30,7 +30,7 @@ class EveryTimePlayed(commands.Cog):
                 "songs" s,
                 plainto_tsquery('english', %(query)s) query,
                 ts_rank(fts, query) rank,
-                extensions.SIMILARITY(%(query)s, coalesce(short_name, song_name)) similarity
+                similarity(%(query)s, coalesce(short_name, song_name)) similarity
             WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;
             """,

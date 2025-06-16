@@ -75,3 +75,6 @@
   - removed the FTS generated columns because they were causing all kinds of issues with supabase and digital ocean. They were just a replacement for the normal to_tsvector commands anyway.
 - 2025-06-12:
   - fixed city location command. If a city doesn't have a state, the search was returning none no matter what. Rewrote it as a two-step process (search then city info)
+- 2025-06-16:
+  - removed unneeded "extensions" prefix for similarity. It was something that Supabase kept having issues with but it seems to not be an issue anymore.
+  - updated a few commands to show the event_id if the date is null

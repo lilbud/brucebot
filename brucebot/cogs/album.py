@@ -102,7 +102,7 @@ class Album(commands.Cog):
                 plainto_tsquery('english', %(query)s) query,
                 to_tsvector('english', unaccent("name")) fts,
                 ts_rank(fts, query) rank,
-                extensions.SIMILARITY(%(query)s, coalesce(short_name, name)) similarity
+                SIMILARITY(%(query)s, coalesce(short_name, name)) similarity
             WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;
             """,

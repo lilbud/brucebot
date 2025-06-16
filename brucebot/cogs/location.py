@@ -83,7 +83,7 @@ class Location(commands.Cog):
                         plainto_tsquery('english', %(query)s) query,
                         to_tsvector(unaccent(name || ' ' || coalesce(aliases, ''))) fts,
                         ts_rank(fts, query) rank,
-                        extensions.SIMILARITY(unaccent(name || ' ' || coalesce(aliases, '')), %(query)s) similarity
+                        similarity(unaccent(name || ' ' || coalesce(aliases, '')), %(query)s) similarity
                     WHERE query @@ fts
                     ORDER BY similarity DESC, rank DESC NULLS LAST;
                 """,
@@ -96,10 +96,10 @@ class Location(commands.Cog):
                 res = await cur.execute(
                     """
                     SELECT
-                        CASE WHEN c.state IS NOT NULL THEN ', ' || s.state_abbrev ELSE c.name END AS name,
+                        CASE WHEN c.state IS NOT NULL THEN c.name || ', ' || s.state_abbrev ELSE c.name END AS name,
                         c.num_events,
-                        '[' || e.event_date || '](http://brucebase.wikidot.com' || e.brucebase_url || ')' as first_event,
-                        '[' || e1.event_date || '](http://brucebase.wikidot.com' || e1.brucebase_url || ')' as last_event
+                        '[' || coalesce(e.event_date::text, e.event_id) || '](http://brucebase.wikidot.com' || e.brucebase_url || ')' as first_event,
+                        '[' || coalesce(e1.event_date::text, e1.event_id) || '](http://brucebase.wikidot.com' || e1.brucebase_url || ')' as last_event
                     FROM cities c
                     LEFT JOIN states s ON s.id = c.state
                     LEFT JOIN events e ON e.event_id = c.first_played
@@ -149,10 +149,10 @@ class Location(commands.Cog):
                                 s.name AS state_name,
                                 s.state_abbrev,
                                 c.name AS country,
-                                '[' || e.event_date ||
+                                '[' || coalesce(e.event_date::text, e.event_id) ||
                                     '](http://brucebase.wikidot.com' ||
                                     e.brucebase_url || ')' AS first_event,
-                                '[' || e1.event_date ||
+                                '[' || coalesce(e1.event_date::text, e1.event_id) ||
                                     '](http://brucebase.wikidot.com' ||
                                     e1.brucebase_url || ')' AS last_event,
                                 s.num_events
@@ -169,7 +169,7 @@ class Location(commands.Cog):
                             to_tsvector('english', state_name || ' ' || state_abbrev ||
                                 ' ' || country) fts,
                             ts_rank(fts, query) rank,
-                            extensions.SIMILARITY(state_name || ' ' || state_abbrev ||
+                            similarity(state_name || ' ' || state_abbrev ||
                                 ' ' || country, %(query)s) similarity
                         WHERE query @@ fts
                         ORDER BY similarity DESC, rank DESC NULLS LAST;
@@ -219,10 +219,10 @@ class Location(commands.Cog):
                             c.alpha_2,
                             c.alpha_3,
                             c.aliases,
-                            '[' || e.event_date ||
+                            '[' || coalesce(e.event_date::text, e.event_id) ||
                                 '](http://brucebase.wikidot.com' ||
                                 e.brucebase_url || ')' AS first_event,
-                            '[' || e1.event_date ||
+                            '[' || coalesce(e1.event_date::text, e1.event_id) ||
                                 '](http://brucebase.wikidot.com' ||
                                 e1.brucebase_url || ')' AS last_event
                             FROM countries c
@@ -237,7 +237,7 @@ class Location(commands.Cog):
                         to_tsvector('english', name || ' ' || alpha_2 || ' ' ||
                             alpha_3 || coalesce(aliases, '')) fts,
                         ts_rank(fts, query) rank,
-                        extensions.SIMILARITY(name || ' ' || alpha_2 || ' ' || alpha_3 ||
+                        similarity(name || ' ' || alpha_2 || ' ' || alpha_3 ||
                             coalesce(aliases, ''), %(query)s) similarity
                     WHERE query @@ fts
                     ORDER BY similarity DESC, rank DESC NULLS LAST;

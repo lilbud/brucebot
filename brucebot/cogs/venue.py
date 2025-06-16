@@ -46,7 +46,7 @@ class Venue(commands.Cog):
         res = await cur.execute(
             """
             SELECT
-                e.event_date,
+                coalesce(e.event_date::text, e.event_id) as event_date,
                 e.brucebase_url
             FROM events e
             WHERE e.venue_id = %(query)s
@@ -70,7 +70,7 @@ class Venue(commands.Cog):
                 to_tsvector('english', name || ' ' || city || ' ' ||
                     coalesce(aliases, '')) fts,
                 ts_rank(fts, query) rank,
-                extensions.SIMILARITY(name || ' ' || city || ' ' ||
+                similarity(name || ' ' || city || ' ' ||
                     coalesce(aliases, ''), %(query)s) similarity
             WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;
@@ -90,7 +90,7 @@ class Venue(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        venue: str,
+        venue_query: str,
     ) -> None:
         """Search database for venue.
 
@@ -103,7 +103,7 @@ class Venue(commands.Cog):
                 row_factory=dict_row,
             ) as cur,
         ):
-            venue = await self.venue_search(venue, cur)
+            venue = await self.venue_search(venue_query, cur)
 
             if venue is not None:
                 stats = await self.venue_stats(venue["id"], cur)
@@ -114,7 +114,7 @@ class Venue(commands.Cog):
             else:
                 embed = await bot_embed.not_found_embed(
                     command=self.__class__.__name__,
-                    message=venue,
+                    message=venue_query,
                 )
                 await ctx.send(embed=embed)
 

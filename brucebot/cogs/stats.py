@@ -1,4 +1,3 @@
-import ftfy
 import psycopg
 from cogs.bot_stuff import bot_embed, db, utils, viewmenu
 from discord.ext import commands
@@ -12,34 +11,6 @@ class Stats(commands.Cog):
         """Init Setlist cog with bot."""
         self.bot = bot
         self.description = "Stats about songs Bruce has played live."
-
-    async def song_find_fuzzy(
-        self,
-        query: str,
-        cur: psycopg.AsyncCursor,
-    ) -> dict:
-        """Fuzzy search SONGS table using full text search."""
-        res = await cur.execute(
-            """
-            SELECT
-                s.id,
-                s.brucebase_url,
-                s.song_name,
-                rank,
-                similarity
-            FROM
-                "songs" s,
-                plainto_tsquery('simple', %(query)s) query,
-                ts_rank(fts, query) rank,
-                extensions.SIMILARITY(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
-            WHERE query @@ fts
-            AND similarity >= 0.0415
-            ORDER BY similarity DESC, rank DESC;
-            """,  # noqa: E501
-            {"query": ftfy.fix_text(query)},
-        )
-
-        return await res.fetchall()
 
     async def get_tour_stats(
         self,

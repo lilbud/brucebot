@@ -47,7 +47,7 @@ class Archive(commands.Cog):
 
         for index, show in enumerate(shows, start=1):
             added_date = show["created_at"].strftime("%Y-%m-%d %I:%M %p")
-            row = f"{index}. [{show['archive_url'][28:]}]({show['archive_url']})\n\tAdded: {added_date}"  # noqa: E501
+            row = f"{index}. [{show['archive_url']}](https://archive.org/details/{show['archive_url']})\n\tAdded: {added_date}"  # noqa: E501
 
             links.append(row)
 

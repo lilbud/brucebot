@@ -60,6 +60,9 @@ class BruceBot(commands.Bot):
 
     async def on_message(self, message: discord.Message) -> None:
         """When message sent."""
+        # if message:
+        #     await message.channel.send("<@Travis_Bickle>")
+
         if message.author.bot:  # If the message is sent by a bot, return
             return
 

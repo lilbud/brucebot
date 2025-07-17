@@ -85,7 +85,9 @@ class Song(commands.Cog):
                 s.opener,
                 s.closer,
                 s.original_artist,
-                s.original
+                s.original,
+                s.spotify_id,
+                s.length
             FROM "songs" s
             LEFT JOIN "events" e ON e.event_id = s.first_played OR e.event_id = s.last_played
             LEFT JOIN "songs_after_release" s1 ON s1.song_id = s.id
@@ -147,6 +149,7 @@ class Song(commands.Cog):
             ctx=ctx,
             title=song["song_name"],
         )
+        view = discord.ui.View()
 
         try:
             embed.set_thumbnail(
@@ -170,6 +173,9 @@ class Song(commands.Cog):
                 value=song["original_artist"],
                 inline=False,
             )
+
+        if song["length"]:
+            embed.add_field(name="Length:", value=song["length"], inline=False)
 
         embed.add_field(
             name="Performances:",
@@ -258,8 +264,6 @@ class Song(commands.Cog):
                     cur=cur,
                 )
 
-                print(song_info)
-
                 embed = await self.song_embed(
                     song=song_info,
                     release=release,
@@ -283,6 +287,16 @@ class Song(commands.Cog):
                     )
 
                     view.add_item(item=musicbrainz_button)
+
+                if song_info["spotify_id"]:
+                    spotify_button = discord.ui.Button(
+                        style="link",
+                        url=f"https://open.spotify.com/track/{song_info['spotify_id']}",
+                        label="Spotify",
+                        row=1,
+                    )
+
+                    view.add_item(item=spotify_button)
 
                 await ctx.send(embed=embed, view=view)
 

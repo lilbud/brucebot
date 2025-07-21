@@ -57,7 +57,7 @@ async def song_find_fuzzy(
             plainto_tsquery('english', %(query)s) query,
             to_tsvector('english', unaccent(song_name) || ' ' || unaccent(COALESCE("short_name", "song_name")) || ' ' || COALESCE("original_artist", ''::"text") || ' ' || COALESCE("aliases", ''::"text")) fts,
             ts_rank(fts, query) rank,
-            similarity(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
+            extensions.similarity(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
         WHERE query @@ fts
         AND similarity >= 0.0415
         ORDER BY similarity DESC, rank DESC NULLS LAST LIMIT 1;

@@ -67,12 +67,12 @@ class Song(commands.Cog):
                 s.id,
                 s.song_name,
                 s.brucebase_url,
-                MIN(e.event_id) AS first_event,
-                MIN(e.event_date) FILTER (WHERE e.event_id = e.event_id) AS first_date,
-                MIN(e.brucebase_url) FILTER (WHERE e.event_id = e.event_id) AS first_url,
-                MAX(e.event_id) AS last_event,
-                    MAX(e.event_date) FILTER (WHERE e.event_id = e.event_id) AS last_date,
-                MAX(e.brucebase_url) FILTER (WHERE e.event_id = e.event_id) AS last_url,
+                e.event_id AS first_event,
+                e.event_date AS first_date,
+                e.brucebase_url AS first_url,
+                e1.event_id AS last_event,
+                e1.event_date AS last_date,
+                e1.brucebase_url AS last_url,
                 s.num_plays_public,
                 CASE WHEN s.num_plays_public > 0 THEN
                 round((s.num_plays_public /
@@ -89,10 +89,11 @@ class Song(commands.Cog):
                 s.spotify_id,
                 s.length
             FROM "songs" s
-            LEFT JOIN "events" e ON e.event_id = s.first_played OR e.event_id = s.last_played
+            LEFT JOIN "events" e ON e.event_id = s.first_played
+            LEFT JOIN "events" e1 ON e1.event_id = s.last_played
             LEFT JOIN "songs_after_release" s1 ON s1.song_id = s.id
             WHERE s.id = %(song_id)s
-            GROUP BY s.id
+            GROUP BY 1,4,7
             """,  # noqa: E501
             {"song_id": song_id},
         )
@@ -193,15 +194,20 @@ class Song(commands.Cog):
             else:
                 last_played = song["last_event"]
 
-            first_date_value = await utils.format_link(
-                url=f"http://brucebase.wikidot.com{song['first_url']}",
-                text=first_played,
-            )
+            first_date_value = first_played
+            last_date_value = last_played
 
-            last_date_value = await utils.format_link(
-                url=f"http://brucebase.wikidot.com{song['last_url']}",
-                text=last_played,
-            )
+            if song["first_url"]:
+                first_date_value = await utils.format_link(
+                    url=f"http://brucebase.wikidot.com{song['first_url']}",
+                    text=first_played,
+                )
+
+            if song["last_url"]:
+                last_date_value = await utils.format_link(
+                    url=f"http://brucebase.wikidot.com{song['last_url']}",
+                    text=last_played,
+                )
 
             gap = await self.calc_show_gap(cur=cur, last_show=song["last_event"])
 
@@ -263,6 +269,8 @@ class Song(commands.Cog):
                     song_id=song_match["id"],
                     cur=cur,
                 )
+
+                print(song_info)
 
                 embed = await self.song_embed(
                     song=song_info,

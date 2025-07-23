@@ -270,8 +270,6 @@ class Song(commands.Cog):
                     cur=cur,
                 )
 
-                print(song_info)
-
                 embed = await self.song_embed(
                     song=song_info,
                     release=release,
@@ -279,13 +277,14 @@ class Song(commands.Cog):
                     cur=cur,
                 )
 
-                brucebase_button = discord.ui.Button(
-                    style="link",
-                    url=f"http://brucebase.wikidot.com{song_match['brucebase_url']}",
-                    label="Brucebase",
-                )
+                if song_match["brucebase_url"]:
+                    brucebase_button = discord.ui.Button(
+                        style="link",
+                        url=f"http://brucebase.wikidot.com{song_match['brucebase_url']}",
+                        label="Brucebase",
+                    )
 
-                view.add_item(item=brucebase_button)
+                    view.add_item(item=brucebase_button)
 
                 if release and release["mbid"]:
                     musicbrainz_button = discord.ui.Button(

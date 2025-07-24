@@ -214,8 +214,8 @@ class Setlist(commands.Cog):
 
             description.append(text)
 
-        if event["event_date_note"]:
-            description.append(f"**Notes:**\n- {event['event_date_note']}")
+        if event["note"]:
+            description.append(f"**Notes:**\n- {event['note']}")
 
         releases = await self.get_releases(event_id=event["event_id"], pool=pool)
 

@@ -55,7 +55,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                     SELECT
                         e.event_type,
                         to_char(e.event_date, 'YYYY-MM-DD [Dy]')||
-                        CASE WHEN e.event_date_note LIKE '%%Placeholder%%'
+                        CASE WHEN e.note LIKE '%%Placeholder%%'
                             THEN ' #' ELSE '' END as date,
                         b.name AS artist,
                         v.formatted_loc AS location,

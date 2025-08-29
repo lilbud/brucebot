@@ -474,12 +474,13 @@ class Song(commands.Cog):
                             count(sn.snippet_id) AS count,
                             MIN(e.event_date) AS first,
                             (SELECT brucebase_url FROM events WHERE
-                                event_id = MIN(sn.event_id)) AS first_url,
+                                event_id = MIN(s.event_id)) AS first_url,
                             MAX(e.event_date) AS last,
                             (SELECT brucebase_url FROM events WHERE
-                                event_id = MAX(sn.event_id)) AS last_url
+                                event_id = MAX(s.event_id)) AS last_url
                         FROM snippets sn
-                        LEFT JOIN events e ON e.event_id = sn.event_id
+                        LEFT JOIN setlists s ON s.id = sn.setlist_id
+                        LEFT JOIN events e ON e.event_id = s.event_id
                         WHERE snippet_id = %s""",
                     (song_match["id"],),
                 )

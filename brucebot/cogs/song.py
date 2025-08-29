@@ -433,7 +433,7 @@ class Song(commands.Cog):
                 s1.brucebase_url AS url,
                 count(s1.id) AS count
             FROM snippets sn
-            LEFT JOIN setlists s ON s.id = sn.setlist_song_id
+            LEFT JOIN setlists s ON s.id = sn.setlist_id
             LEFT JOIN songs s1 ON s1.id = s.song_id
             WHERE sn.snippet_id = %(song_id)s
             GROUP BY s1.song_name, s1.brucebase_url

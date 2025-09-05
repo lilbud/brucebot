@@ -78,3 +78,6 @@
 - 2025-06-16:
   - removed unneeded "extensions" prefix for similarity. It was something that Supabase kept having issues with but it seems to not be an issue anymore.
   - updated a few commands to show the event_id if the date is null
+- 2025-09-05:
+  - fixed missing venue_url in setlist command. Changed the venues view and didn't change the command to match.
+  - fixed setlist_notes not showing other notes if guest, probably breaks something else entirely

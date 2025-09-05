@@ -103,7 +103,7 @@ class Setlist(commands.Cog):
                 """
                     SELECT DISTINCT
                         e.*,
-                        'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
+                        'http://brucebase.wikidot.com/venue:' || v1.brucebase_url AS venue_url,
                         v.formatted_loc AS venue_loc,
                         t1.name AS tour_leg,
                         r.name AS run,
@@ -111,6 +111,7 @@ class Setlist(commands.Cog):
                     FROM "events" e
                     LEFT JOIN tours t ON t.id = e.tour_id
                     LEFT JOIN venues_text v ON v.id = e.venue_id
+                    LEFT JOIN venues v1 ON v1.id = e.venue_id
                     LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
                     LEFT JOIN runs r ON r.id = e.run
                     WHERE e.event_date = %(date)s
@@ -135,7 +136,7 @@ class Setlist(commands.Cog):
                 """
                     SELECT DISTINCT
                         e.*,
-                        'http://brucebase.wikidot.com/venue:' || v.brucebase_url AS venue_url,
+                        'http://brucebase.wikidot.com/venue:' || v1.brucebase_url AS venue_url,
                         v.formatted_loc AS venue_loc,
                         t1.name AS tour_leg,
                         r.name AS run,
@@ -143,6 +144,7 @@ class Setlist(commands.Cog):
                     FROM "events" e
                     LEFT JOIN tours t ON t.id = e.tour_id
                     LEFT JOIN venues_text v ON v.id = e.venue_id
+                    LEFT JOIN venues v1 ON v.id = e.venue_id
                     LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
                     LEFT JOIN runs r ON r.id = e.run
                     WHERE e.event_id = %(event)s

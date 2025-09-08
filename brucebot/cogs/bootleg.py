@@ -135,8 +135,6 @@ class Bootleg(commands.Cog):
             ):
                 bootlegs = await self.bootleg_search(date=date, cur=cur)
 
-                print(bootlegs[0])
-
             if len(bootlegs) > 0:
                 await self.bootleg_embed(
                     ctx=ctx,

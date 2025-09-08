@@ -81,8 +81,6 @@ class EveryTimePlayed(commands.Cog):
 
                     etp_result = await self.etp_follow(song1, song2, cur)
 
-                    print(etp_result)
-
                     if len(etp_result) > 0:
                         menu = await viewmenu.create_dynamic_menu(
                             ctx,

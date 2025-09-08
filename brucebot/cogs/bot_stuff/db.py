@@ -34,19 +34,26 @@ async def create_pool() -> AsyncConnectionPool:
 
     match sys.argv[2]:
         case "local":
-            return AsyncConnectionPool(conninfo=os.getenv("LOCAL_DB_URL"), open=False)
+            return AsyncConnectionPool(
+                conninfo=os.getenv("LOCAL_DB_URL"),
+                kwargs={"prepare_threshold": None},
+                open=False,
+            )
         case "heroku":
             return AsyncConnectionPool(
                 conninfo=os.getenv("HEROKU_DATABASE_URL"),
+                kwargs={"prepare_threshold": None},
                 open=False,
             )
         case "supabase":
             return AsyncConnectionPool(
                 conninfo=os.getenv("SUPABASE_DATABASE_URL"),
+                kwargs={"prepare_threshold": None},
                 open=False,
             )
         case "digitalocean":
             return AsyncConnectionPool(
                 conninfo=os.getenv("DO_DATABASE_URL"),
+                kwargs={"prepare_threshold": None},
                 open=False,
             )

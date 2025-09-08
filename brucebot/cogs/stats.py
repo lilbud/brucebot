@@ -94,8 +94,6 @@ class Stats(commands.Cog):
         ):
             songs = await utils.song_find_fuzzy(query=song, cur=cur)
 
-            print(songs)
-
             if len(songs) > 0:
                 res = await cur.execute(
                     """SELECT o.* FROM "openers_closers" o LEFT JOIN "setlists" s
@@ -213,8 +211,6 @@ class Stats(commands.Cog):
             ) as cur,
         ):
             tour = await self.find_tour(cur, tour)
-
-            print(tour)
 
             if tour:
                 stats = await self.get_tour_stats(

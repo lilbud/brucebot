@@ -10,7 +10,6 @@ from cogs.bot_stuff import bot_embed, db, utils, viewmenu
 from dateutil.parser import ParserError
 from discord.ext import commands
 from psycopg.rows import dict_row
-from psycopg_pool import AsyncConnectionPool
 
 
 class Setlist(commands.Cog):
@@ -22,18 +21,17 @@ class Setlist(commands.Cog):
         self.imgpath = Path(Path(__file__).parents[2], "images", "releases")
         self.description = "Find setlists by date"
 
-    async def get_latest_setlist(self, pool: AsyncConnectionPool) -> str:
+    async def get_latest_setlist(self, cur: psycopg.AsyncCursor) -> str:
         """When no date provided, get the most recent show."""
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            res = await cur.execute(
-                """SELECT
-                    MAX(e.event_id) AS id
-                FROM "setlists" s
-                LEFT JOIN "events" e USING(event_id)
-                """,
-            )
+        res = await cur.execute(
+            """SELECT
+                MAX(e.event_id) AS id
+            FROM "setlists" s
+            LEFT JOIN "events" e USING(event_id)
+            """,
+        )
 
-            return await res.fetchone()
+        return await res.fetchone()
 
     async def get_event_notes(
         self,
@@ -70,134 +68,129 @@ class Setlist(commands.Cog):
     async def get_run(
         self,
         event: str,
-        pool: AsyncConnectionPool,
+        cur: psycopg.AsyncCursor,
     ) -> str:
         """Get the position and number of shows in a run for a run and event."""
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            res = await cur.execute(
-                """
-                SELECT run_name FROM (
-                    SELECT
-                        e.event_id,
-                        r.name || ' (' ||
-                            row_number() OVER (PARTITION BY e.run ORDER BY e.event_id) || '/' ||
-                            count(e.event_id) OVER (PARTITION BY e.run) || ')' AS run_name
-                    FROM events e
-                    LEFT JOIN runs r ON r.id = e.run
-                ) t WHERE t.event_id = %(event)s
-                """,  # noqa: E501
-                {"event": event},
-            )
+        res = await cur.execute(
+            """
+            SELECT run_name FROM (
+                SELECT
+                    e.event_id,
+                    r.name || ' (' ||
+                        row_number() OVER (PARTITION BY e.run ORDER BY e.event_id) || '/' ||
+                        count(e.event_id) OVER (PARTITION BY e.run) || ')' AS run_name
+                FROM events e
+                LEFT JOIN runs r ON r.id = e.run
+            ) t WHERE t.event_id = %(event)s
+            """,  # noqa: E501
+            {"event": event},
+        )
 
-            run = await res.fetchone()
-            return run["run_name"]
+        run = await res.fetchone()
+        return run["run_name"]
 
     async def get_events_by_exact_date(
         self,
         date: str,
-        pool: AsyncConnectionPool,
+        cur: psycopg.AsyncCursor,
     ) -> list["str"]:
         """Get events for a given date."""
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            res = await cur.execute(
-                """
-                    SELECT DISTINCT
-                        e.*,
-                        'http://brucebase.wikidot.com/venue:' || v1.brucebase_url AS venue_url,
-                        v.formatted_loc AS venue_loc,
-                        t1.name AS tour_leg,
-                        r.name AS run,
-                        t.tour_name AS tour
-                    FROM "events" e
-                    LEFT JOIN tours t ON t.id = e.tour_id
-                    LEFT JOIN venues_text v ON v.id = e.venue_id
-                    LEFT JOIN venues v1 ON v1.id = e.venue_id
-                    LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
-                    LEFT JOIN runs r ON r.id = e.run
-                    WHERE e.event_date = %(date)s
-                    ORDER BY e.event_id
-                    """,  # noqa: E501
-                {"date": date},
-            )
+        res = await cur.execute(
+            """
+                SELECT DISTINCT
+                    e.*,
+                    'http://brucebase.wikidot.com/venue:' || v1.brucebase_url AS venue_url,
+                    v.formatted_loc AS venue_loc,
+                    t1.name AS tour_leg,
+                    r.name AS run,
+                    t.tour_name AS tour
+                FROM "events" e
+                LEFT JOIN tours t ON t.id = e.tour_id
+                LEFT JOIN venues_text v ON v.id = e.venue_id
+                LEFT JOIN venues v1 ON v1.id = e.venue_id
+                LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
+                LEFT JOIN runs r ON r.id = e.run
+                WHERE e.event_date = %(date)s
+                ORDER BY e.event_id
+                """,  # noqa: E501
+            {"date": date},
+        )
 
-            return await res.fetchall()
+        return await res.fetchall()
 
     async def get_event_by_id(
         self,
         event: str,
-        pool: AsyncConnectionPool,
+        cur: psycopg.AsyncCursor,
     ) -> list["str"]:
         """Get event for a given id.
 
         Used when the input is the Databruce ID (YYYYMMDD-XX).
         """
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            res = await cur.execute(
-                """
-                    SELECT DISTINCT
-                        e.*,
-                        'http://brucebase.wikidot.com/venue:' || v1.brucebase_url AS venue_url,
-                        v.formatted_loc AS venue_loc,
-                        t1.name AS tour_leg,
-                        r.name AS run,
-                        t.tour_name AS tour
-                    FROM "events" e
-                    LEFT JOIN tours t ON t.id = e.tour_id
-                    LEFT JOIN venues_text v ON v.id = e.venue_id
-                    LEFT JOIN venues v1 ON v.id = e.venue_id
-                    LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
-                    LEFT JOIN runs r ON r.id = e.run
-                    WHERE e.event_id = %(event)s
-                    ORDER BY e.event_id
-                    """,  # noqa: E501
-                {"event": event},
-            )
+        res = await cur.execute(
+            """
+                SELECT DISTINCT
+                    e.*,
+                    'http://brucebase.wikidot.com/venue:' || v1.brucebase_url AS venue_url,
+                    v.formatted_loc AS venue_loc,
+                    t1.name AS tour_leg,
+                    r.name AS run,
+                    t.tour_name AS tour
+                FROM "events" e
+                LEFT JOIN tours t ON t.id = e.tour_id
+                LEFT JOIN venues_text v ON v.id = e.venue_id
+                LEFT JOIN venues v1 ON v1.id = e.venue_id
+                LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
+                LEFT JOIN runs r ON r.id = e.run
+                WHERE e.event_id = %(event)s
+                ORDER BY e.event_id
+                """,  # noqa: E501
+            {"event": event},
+        )
 
-            return await res.fetchall()
+        return await res.fetchall()
 
     async def get_releases(
         self,
         event_id: str,
-        pool: AsyncConnectionPool,
+        cur: psycopg.AsyncCursor,
     ) -> list:
         """Get all releases, nugs and/or archive if exist."""
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            res = await cur.execute(
-                """
-                SELECT unnest(array_remove(array[nugs, archive, release], NULL)) AS links FROM (
-                    SELECT
-                        '[' || n.name || '](' || n.nugs_url || ')' AS nugs,
-                        '[Archive.org](https://archive.org/details/' || a.archive_url || ')' AS archive,
-                        coalesce(r.name, null) AS release
-                    FROM events e
-                    LEFT JOIN archive_links a USING(event_id)
-                    LEFT JOIN "nugs_releases" n USING(event_id)
-                    LEFT JOIN releases r USING (event_id)
-                    WHERE e.event_id=%(event)s
-                ) t
-                """,
-                {"event": event_id},
-            )
+        res = await cur.execute(
+            """
+            SELECT unnest(array_remove(array[nugs, archive, release], NULL)) AS links FROM (
+                SELECT
+                    '[' || n.name || '](' || n.nugs_url || ')' AS nugs,
+                    '[Archive.org](https://archive.org/details/' || a.archive_url || ')' AS archive,
+                    coalesce(r.name, null) AS release
+                FROM events e
+                LEFT JOIN archive_links a USING(event_id)
+                LEFT JOIN "nugs_releases" n USING(event_id)
+                LEFT JOIN releases r USING (event_id)
+                WHERE e.event_id=%(event)s
+            ) t
+            """,
+            {"event": event_id},
+        )
 
-            return [rel["links"] for rel in await res.fetchall()]
+        return [rel["links"] for rel in await res.fetchall()]
 
-    async def parse_brucebase_url(self, url: str, pool: AsyncConnectionPool) -> str:
+    async def parse_brucebase_url(self, url: str, cur: psycopg.AsyncCursor) -> str:
         """Use provided Brucebase URL to get event_id."""
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            url = re.sub(r"(http\:\/\/)?brucebase.wikidot.com", "", url)
+        url = re.sub(r"(http\:\/\/)?brucebase.wikidot.com", "", url)
 
-            res = await cur.execute(
-                """SELECT e.event_id AS id FROM events e WHERE brucebase_url=%(url)s""",
-                {"url": url},
-            )
+        res = await cur.execute(
+            """SELECT e.event_id AS id FROM events e WHERE brucebase_url=%(url)s""",
+            {"url": url},
+        )
 
-            return await res.fetchone()
+        return await res.fetchone()
 
     async def setlist_embed(
         self,
         event: dict,
         ctx: commands.Context,
-        pool: AsyncConnectionPool,
+        cur: psycopg.AsyncCursor,
     ) -> discord.File | discord.Embed:
         """Create embed."""
         venue_url = await utils.format_link(event["venue_url"], event["venue_loc"])
@@ -218,7 +211,7 @@ class Setlist(commands.Cog):
         if event["note"]:
             description.append(f"**Notes:**\n- {event['note']}")
 
-        releases = await self.get_releases(event_id=event["event_id"], pool=pool)
+        releases = await self.get_releases(event["event_id"], cur)
 
         if len(releases) > 0:
             description.append(f"**Releases:** {', '.join(releases)}")
@@ -237,24 +230,23 @@ class Setlist(commands.Cog):
             url=f"http://brucebase.wikidot.com{event['brucebase_url']}",
         )
 
-        async with pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
-            res = await cur.execute(
-                """
-                SELECT
-                    s.set_name,
-                    s.setlist
-                FROM "setlists_by_set_and_date" s
-                LEFT JOIN "events" e USING (event_id)
-                WHERE s.event_id = %(event_id)s
-                GROUP BY s.event_id, s.set_name, s.setlist, s.set_order
-                ORDER BY s.set_order
-                """,
-                event,
-            )
+        res = await cur.execute(
+            """
+            SELECT
+                s.set_name,
+                s.setlist
+            FROM "setlists_by_set_and_date" s
+            LEFT JOIN "events" e USING (event_id)
+            WHERE s.event_id = %(event_id)s
+            GROUP BY s.event_id, s.set_name, s.setlist, s.set_order
+            ORDER BY s.set_order
+            """,
+            event,
+        )
 
-            setlist = await res.fetchall()
+        setlist = await res.fetchall()
 
-            notes = await self.get_event_notes(event_id=event["event_id"], cur=cur)
+        notes = await self.get_event_notes(event_id=event["event_id"], cur=cur)
 
         if len(setlist) == 0:
             if (
@@ -293,7 +285,7 @@ class Setlist(commands.Cog):
             )
 
         event_info = {
-            "run": await self.get_run(event["event_id"], pool),
+            "run": await self.get_run(event["event_id"], cur),
             "event": event["event_certainty"],
             "setlist": event["setlist_certainty"],
         }
@@ -313,12 +305,12 @@ class Setlist(commands.Cog):
     async def get_latest(
         self,
         ctx: commands.Context,
+        cur: psycopg.AsyncCursor,
     ) -> None:
         """Get most recent show."""
-        async with await db.create_pool() as pool:
-            date = await self.get_latest_setlist(pool=pool)
+        date = await self.get_latest_setlist(cur)
 
-            await ctx.invoke(self.bot.get_command("setlist"), date=date)
+        await ctx.invoke(self.bot.get_command("setlist"), date=date)
 
     @commands.hybrid_command(
         name="setlist",
@@ -336,21 +328,24 @@ class Setlist(commands.Cog):
 
         Note: date must be past, not a future date.
         """
-        async with await db.create_pool() as pool:
+        async with (
+            await db.create_pool() as pool,
+            pool.connection() as conn,
+            conn.cursor(
+                row_factory=dict_row,
+            ) as cur,
+        ):
             if re.search(r"\/(gig|rehearsal|nogig|recording|nobruce):", date):
-                event = await self.parse_brucebase_url(date, pool)
-
-                if event:
-                    events = await self.get_event_by_id(event["id"], pool)
+                event = await self.parse_brucebase_url(date, cur)
 
             elif date == "":
-                event = await self.get_latest_setlist(pool=pool)
+                event = await self.get_latest_setlist(cur)
 
-                if event:
-                    events = await self.get_event_by_id(event["id"], pool)
+            if event:
+                events = await self.get_event_by_id(event["id"], cur)
 
             elif re.search(r"\d{8}-\d{2}", date):  # databruce_id
-                events = await self.get_event_by_id(date, pool)
+                events = await self.get_event_by_id(date, cur)
 
             else:
                 date = await utils.date_parsing(date)
@@ -358,7 +353,7 @@ class Setlist(commands.Cog):
                 try:
                     events = await self.get_events_by_exact_date(
                         date=date.strftime("%Y-%m-%d"),
-                        pool=pool,
+                        cur=cur,
                     )
                 except (ParserError, AttributeError):
                     embed = discord.Embed(
@@ -370,11 +365,12 @@ class Setlist(commands.Cog):
                     return
 
             try:
+                print(events)
                 if len(events) == 1:
                     embed = await self.setlist_embed(
                         event=events[0],
                         ctx=ctx,
-                        pool=pool,
+                        cur=cur,
                     )
 
                     await ctx.send(embed=embed)
@@ -385,7 +381,7 @@ class Setlist(commands.Cog):
                     )
 
                     embeds = [
-                        await self.setlist_embed(event=event, ctx=ctx, pool=pool)
+                        await self.setlist_embed(event=event, ctx=ctx, cur=cur)
                         for event in events
                     ]
 

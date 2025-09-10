@@ -81,3 +81,5 @@
 - 2025-09-05:
   - fixed missing venue_url in setlist command. Changed the venues view and didn't change the command to match.
   - fixed setlist_notes not showing other notes if guest, probably breaks something else entirely
+- 2025-09-09:
+  - fixed setlists erroring out with any event that wasn't latest

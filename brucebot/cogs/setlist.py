@@ -337,11 +337,10 @@ class Setlist(commands.Cog):
         ):
             if re.search(r"\/(gig|rehearsal|nogig|recording|nobruce):", date):
                 event = await self.parse_brucebase_url(date, cur)
+                events = await self.get_event_by_id(event["id"], cur)
 
             elif date == "":
                 event = await self.get_latest_setlist(cur)
-
-            if event:
                 events = await self.get_event_by_id(event["id"], cur)
 
             elif re.search(r"\d{8}-\d{2}", date):  # databruce_id
@@ -365,7 +364,6 @@ class Setlist(commands.Cog):
                     return
 
             try:
-                print(events)
                 if len(events) == 1:
                     embed = await self.setlist_embed(
                         event=events[0],

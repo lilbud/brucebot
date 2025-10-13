@@ -108,7 +108,7 @@ class Song(commands.Cog):
         """Get info on the first release of a given song."""
         res = await cur.execute(
             """SELECT
-                    r.name, r.release_date
+                    r.name, r.release_date, r.mbid
                 FROM songs s
                 LEFT JOIN releases r ON r.id = s.album
                 WHERE s.id = %s AND r.id is not null

@@ -108,10 +108,10 @@ class Song(commands.Cog):
         """Get info on the first release of a given song."""
         res = await cur.execute(
             """SELECT
-                    *
-                FROM songs_first_release s
-                LEFT JOIN releases r ON r.id = s.release_id
-                WHERE song_id = %s
+                    r.name, r.release_date
+                FROM songs s
+                LEFT JOIN releases r ON r.id = s.album
+                WHERE s.id = %s AND r.id is not null
                 """,
             (song_id,),
         )
@@ -162,11 +162,18 @@ class Song(commands.Cog):
             )
 
         if release:
-            embed.add_field(
-                name="Original Release:",
-                value=f"{release['name']} _({release['release_date'].strftime('%B %d, %Y')})_",  # noqa: E501
-                inline=False,
-            )
+            try:
+                embed.add_field(
+                    name="Release:",
+                    value=f"{release['name']} _({release['release_date'].strftime('%B %d, %Y')})_",  # noqa: E501
+                    inline=False,
+                )
+            except AttributeError:
+                embed.add_field(
+                    name="Release:",
+                    value=f"{release['name']}",
+                    inline=False,
+                )
 
         if song["original"] is False:
             embed.add_field(

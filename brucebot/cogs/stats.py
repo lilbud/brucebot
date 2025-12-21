@@ -51,6 +51,7 @@ class Stats(commands.Cog):
                 t.tour_name
             FROM
                 "tours" t,
+                "to_tsvector"('"english"'::"regconfig", "tour_name") fts,
                 plainto_tsquery('english', %(tour)s) query
             WHERE query @@ fts
             ORDER BY t.id ASC NULLS LAST;""",
@@ -110,7 +111,7 @@ class Stats(commands.Cog):
                     embed = await bot_embed.create_embed(
                         ctx,
                         title=songs["song_name"],
-                        url=f"http://brucebase.wikidot.com{songs['brucebase_url']}",
+                        url=f"https://www.databruce.com/events/{songs['id']}",
                     )
 
                     for i in openers_list:
@@ -169,7 +170,7 @@ class Stats(commands.Cog):
                     embed = await bot_embed.create_embed(
                         ctx,
                         title=songs["song_name"],
-                        url=f"http://brucebase.wikidot.com{songs['brucebase_url']}",
+                        url=f"https://www.databruce.com/events/{songs['id']}",
                     )
 
                     for i in closers_list:

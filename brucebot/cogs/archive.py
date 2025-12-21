@@ -23,7 +23,7 @@ class Archive(commands.Cog):
         for index, show in enumerate(shows, start=1):
             added_date = show["created_at"]
 
-            row = f"{index}. [{show['archive_url'][28:]}]({show['archive_url']})\n\tAdded: {added_date.strftime('%Y-%m-%d - %I:%M %p')}"  # noqa: E501
+            row = f"{index}. [{show['archive_url']}](https://archive.org/details/{show['archive_url']})\n\tAdded: {added_date.strftime('%Y-%m-%d - %I:%M %p')}"  # noqa: E501
 
             menu.add_row(row)
 

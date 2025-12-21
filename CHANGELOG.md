@@ -83,3 +83,7 @@
   - fixed setlist_notes not showing other notes if guest, probably breaks something else entirely
 - 2025-09-09:
   - fixed setlists erroring out with any event that wasn't latest
+- 2025-12-21:
+  - changed all Brucebase links to Databruce
+  - fixed state command getting country first instead of state first
+  - fixed venue search, had changed the venues_text view and never updated this

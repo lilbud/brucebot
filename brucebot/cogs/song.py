@@ -69,10 +69,10 @@ class Song(commands.Cog):
                 s.brucebase_url,
                 e.event_id AS first_event,
                 e.event_date AS first_date,
-                e.brucebase_url AS first_url,
+                e.event_id AS first_url,
                 e1.event_id AS last_event,
                 e1.event_date AS last_date,
-                e1.brucebase_url AS last_url,
+                e1.event_id AS last_url,
                 s.num_plays_public,
                 CASE WHEN s.num_plays_public > 0 THEN
                 round((s.num_plays_public /
@@ -206,13 +206,13 @@ class Song(commands.Cog):
 
             if song["first_url"]:
                 first_date_value = await utils.format_link(
-                    url=f"http://brucebase.wikidot.com{song['first_url']}",
+                    url=f"https://www.databruce.com/events/{song['first_url']}",
                     text=first_played,
                 )
 
             if song["last_url"]:
                 last_date_value = await utils.format_link(
-                    url=f"http://brucebase.wikidot.com{song['last_url']}",
+                    url=f"https://www.databruce.com/events/{song['last_url']}",
                     text=last_played,
                 )
 
@@ -284,11 +284,11 @@ class Song(commands.Cog):
                     cur=cur,
                 )
 
-                if song_match["brucebase_url"]:
+                if song_match["id"]:
                     brucebase_button = discord.ui.Button(
                         style="link",
-                        url=f"http://brucebase.wikidot.com{song_match['brucebase_url']}",
-                        label="Brucebase",
+                        url=f"https://www.databruce.com/songs/{song_match['id']}",
+                        label="Databruce",
                     )
 
                     view.add_item(item=brucebase_button)
@@ -480,10 +480,10 @@ class Song(commands.Cog):
                     """SELECT
                             count(sn.snippet_id) AS count,
                             MIN(e.event_date) AS first,
-                            (SELECT brucebase_url FROM events WHERE
+                            (SELECT event_id FROM events WHERE
                                 event_id = MIN(s.event_id)) AS first_url,
                             MAX(e.event_date) AS last,
-                            (SELECT brucebase_url FROM events WHERE
+                            (SELECT event_id FROM events WHERE
                                 event_id = MAX(s.event_id)) AS last_url
                         FROM snippets sn
                         LEFT JOIN setlists s ON s.id = sn.setlist_id
@@ -512,7 +512,7 @@ class Song(commands.Cog):
                 embed = await bot_embed.create_embed(
                     ctx=ctx,
                     title=f"{song_info['song_name']} (snippet)",
-                    url=f"http://brucebase.wikidot.com{song_info['brucebase_url']}",
+                    url=f"https://www.databruce.com/songs/{song_info['id']}",
                 )
 
                 if release:
@@ -534,16 +534,16 @@ class Song(commands.Cog):
                 if snippet["count"] > 0:
                     embed.add_field(
                         name="First:",
-                        value=f"[{snippet['first']}](<http://brucebase.wikidot.com{snippet['first_url']}>)",
+                        value=f"[{snippet['first']}](<https://www.databruce.com/events/{snippet['first_url']}>)",
                     )
                     embed.add_field(
                         name="Last:",
-                        value=f"[{snippet['last']}](<http://brucebase.wikidot.com{snippet['last_url']}>)",
+                        value=f"[{snippet['last']}](<https://www.databruce.com/events/{snippet['last_url']}>)",
                     )
 
                 if snippet_songs:
                     songs = [
-                        f"[{song['song_name']}](http://brucebase.wikidot.com{song['url']}) - {song['count']} times(s)"  # noqa: E501
+                        f"[{song['song_name']}](https://www.databruce.com/songs/{song['url']}) - {song['count']} times(s)"  # noqa: E501
                         for song in snippet_songs
                     ]
 

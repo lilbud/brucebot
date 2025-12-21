@@ -35,14 +35,14 @@ class Relation(commands.Cog):
         """Get info for relation by id."""
         res = await cur.execute(
             """SELECT
-                r.brucebase_url,
+                r.id,
                 r.name,
                 r.appearances,
                 r.aliases,
                 coalesce(e.event_date::text, e.event_id) AS first_date,
-                e.brucebase_url AS first_url,
+                e.event_id AS first_url,
                 coalesce(e1.event_date::text, e1.event_id) AS last_date,
-                e1.brucebase_url AS last_url
+                e1.event_id AS last_url
             FROM "relations" r
             LEFT JOIN "events" e ON e.event_id = r.first_appearance
             LEFT JOIN "events" e1 ON e1.event_id = r.last_appearance
@@ -62,19 +62,19 @@ class Relation(commands.Cog):
             ctx=ctx,
             title=relation["name"],
             description=f"**Nicknames:** {relation['aliases']}",
-            url=f"http://brucebase.wikidot.com/relation:{relation['brucebase_url']}",
+            url=f"https://www.databruce.com/relations/{relation['id']}",
         )
 
         embed.add_field(name="Appearances", value=relation["appearances"])
 
         embed.add_field(
             name="First Appearance:",
-            value=f"[{relation['first_date']}](http://brucebase.wikidot.com{relation['first_url']})",
+            value=f"[{relation['first_date']}](https://www.databruce.com/events/{relation['first_url']})",
         )
 
         embed.add_field(
             name="Last Appearance:",
-            value=f"[{relation['last_date']}](http://brucebase.wikidot.com{relation['last_url']})",
+            value=f"[{relation['last_date']}](https://www.databruce.com/events/{relation['last_url']})",
         )
 
         return embed
@@ -109,7 +109,7 @@ class Relation(commands.Cog):
                     plainto_tsquery('english', %(query)s) query,
                     to_tsvector('english', unaccent("name") || ' ' || COALESCE("aliases", ''::"text")) fts,
                     ts_rank(fts, query) rank,
-                    similarity(%(query)s,
+                    extensions.SIMILARITY(%(query)s,
                         unaccent(name) || ' ' ||
                         coalesce(aliases, '')) similarity
                 WHERE query @@ fts

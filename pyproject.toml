@@ -12,3 +12,18 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "reactionmenu>=3.1.7",
 ]
+
+[tool.ty.environment]
+root = ["./brucebot"]
+
+[tool.ty.rules]
+non-subscriptable = "ignore"
+possibly-missing-attribute = "ignore"
+invalid-argument-type="ignore"
+invalid-return-type="ignore"
+invalid-assignment="ignore"
+invalid-type-form="ignore"
+unresolved-attribute="ignore"
+no-matching-overload="ignore"
+unsupported-operator="ignore"
+unresolved-import="ignore"

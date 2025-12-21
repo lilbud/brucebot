@@ -24,19 +24,19 @@ class Venue(commands.Cog):
             ctx=ctx,
             title=venue["formatted_loc"],
             description=f"**Nicknames:** {venue['aliases']}",
-            url=f"http://brucebase.wikidot.com/venue:{venue['brucebase_url']}",
+            url=f"https://www.databruce.com/venues/{venue['id']}",
         )
 
         embed.add_field(name="Appearances", value=venue["num_events"])
 
         embed.add_field(
             name="First Event:",
-            value=f"[{stats['first']['event_date']}](http://brucebase.wikidot.com{stats['first']['brucebase_url']})",
+            value=f"[{stats['first']['event_date']}](https://www.databruce.com/events/{stats['first']['event_id']})",
         )
 
         embed.add_field(
             name="Last Event:",
-            value=f"[{stats['last']['event_date']}](http://brucebase.wikidot.com{stats['last']['brucebase_url']})",
+            value=f"[{stats['last']['event_date']}](https://www.databruce.com/events/{stats['last']['event_id']})",
         )
 
         return embed
@@ -47,7 +47,7 @@ class Venue(commands.Cog):
             """
             SELECT
                 coalesce(e.event_date::text, e.event_id) as event_date,
-                e.brucebase_url
+                e.event_id
             FROM events e
             WHERE e.venue_id = %(query)s
             ORDER BY e.event_date
@@ -65,13 +65,14 @@ class Venue(commands.Cog):
             SELECT
                 *
             FROM
-                venues_text,
+                venues_text v
+                left join venues v1 ON v1.id = v.id,
                 plainto_tsquery('english', %(query)s) query,
-                to_tsvector('english', name || ' ' || city || ' ' ||
-                    coalesce(aliases, '')) fts,
+                to_tsvector('english', v.name || ' ' || v.location || ' ' ||
+                    coalesce(v1.aliases, '')) fts,
                 ts_rank(fts, query) rank,
-                similarity(name || ' ' || city || ' ' ||
-                    coalesce(aliases, ''), %(query)s) similarity
+                extensions.similarity(v.name || ' ' || v.location || ' ' ||
+                    coalesce(v1.aliases, ''), %(query)s) similarity
             WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;
             """,

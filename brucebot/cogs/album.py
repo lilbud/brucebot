@@ -102,7 +102,7 @@ class Album(commands.Cog):
                 plainto_tsquery('english', %(query)s) query,
                 to_tsvector('english', unaccent("name")) fts,
                 ts_rank(fts, query) rank,
-                SIMILARITY(%(query)s, coalesce(short_name, name)) similarity
+                extensions.SIMILARITY(%(query)s, coalesce(short_name, name)) similarity
             WHERE query @@ fts
             ORDER BY similarity DESC, rank DESC;
             """,
@@ -151,7 +151,7 @@ class Album(commands.Cog):
                 )
 
                 brucebase_button = await utils.create_link_button(
-                    url=f"http://brucebase.wikidot.com{album['brucebase_id']}",
+                    url=f"https://www.databruce.com/releases/{album['id']}",
                 )
                 musicbrainz_button = await utils.create_link_button(
                     url=f"https://musicbrainz.org/release/{album['mbid']}",

@@ -83,7 +83,7 @@ class Location(commands.Cog):
                         plainto_tsquery('english', %(query)s) query,
                         to_tsvector(unaccent(name || ' ' || coalesce(aliases, ''))) fts,
                         ts_rank(fts, query) rank,
-                        similarity(unaccent(name || ' ' || coalesce(aliases, '')), %(query)s) similarity
+                        extensions.SIMILARITY(unaccent(name || ' ' || coalesce(aliases, '')), %(query)s) similarity
                     WHERE query @@ fts
                     ORDER BY similarity DESC, rank DESC NULLS LAST;
                 """,
@@ -98,8 +98,8 @@ class Location(commands.Cog):
                     SELECT
                         CASE WHEN c.state IS NOT NULL THEN c.name || ', ' || s.state_abbrev ELSE c.name END AS name,
                         c.num_events,
-                        '[' || coalesce(e.event_date::text, e.event_id) || '](http://brucebase.wikidot.com' || e.brucebase_url || ')' as first_event,
-                        '[' || coalesce(e1.event_date::text, e1.event_id) || '](http://brucebase.wikidot.com' || e1.brucebase_url || ')' as last_event
+                        '[' || coalesce(e.event_date::text, e.event_id) || '](https://www.databruce.com/events/' || e.event_id || ')' as first_event,
+                        '[' || coalesce(e1.event_date::text, e1.event_id) || '](https://www.databruce.com/events/' || e1.event_id || ')' as last_event
                     FROM cities c
                     LEFT JOIN states s ON s.id = c.state
                     LEFT JOIN events e ON e.event_id = c.first_played
@@ -150,16 +150,16 @@ class Location(commands.Cog):
                                 s.state_abbrev,
                                 c.name AS country,
                                 '[' || coalesce(e.event_date::text, e.event_id) ||
-                                    '](http://brucebase.wikidot.com' ||
-                                    e.brucebase_url || ')' AS first_event,
+                                    '](https://www.databruce.com/events/' ||
+                                    e.event_id || ')' AS first_event,
                                 '[' || coalesce(e1.event_date::text, e1.event_id) ||
-                                    '](http://brucebase.wikidot.com' ||
-                                    e1.brucebase_url || ')' AS last_event,
+                                    '](https://www.databruce.com/events/' ||
+                                    e1.event_id || ')' AS last_event,
                                 s.num_events
                                 FROM states s
                             LEFT JOIN countries c ON c.id = s.country
-                            LEFT JOIN events e ON e.event_id = c.first_played
-                            LEFT JOIN events e1 ON e1.event_id = c.last_played
+                            LEFT JOIN events e ON e.event_id = s.first_played
+                            LEFT JOIN events e1 ON e1.event_id = s.last_played
                         )
                         SELECT
                             *
@@ -169,7 +169,7 @@ class Location(commands.Cog):
                             to_tsvector('english', state_name || ' ' || state_abbrev ||
                                 ' ' || country) fts,
                             ts_rank(fts, query) rank,
-                            similarity(state_name || ' ' || state_abbrev ||
+                            extensions.SIMILARITY(state_name || ' ' || state_abbrev ||
                                 ' ' || country, %(query)s) similarity
                         WHERE query @@ fts
                         ORDER BY similarity DESC, rank DESC NULLS LAST;
@@ -220,11 +220,11 @@ class Location(commands.Cog):
                             c.alpha_3,
                             c.aliases,
                             '[' || coalesce(e.event_date::text, e.event_id) ||
-                                '](http://brucebase.wikidot.com' ||
-                                e.brucebase_url || ')' AS first_event,
+                                '](https://www.databruce.com/events/' ||
+                                e.event_id || ')' AS first_event,
                             '[' || coalesce(e1.event_date::text, e1.event_id) ||
-                                '](http://brucebase.wikidot.com' ||
-                                e1.brucebase_url || ')' AS last_event
+                                '](https://www.databruce.com/events/' ||
+                                e1.event_id || ')' AS last_event
                             FROM countries c
                         LEFT JOIN events e ON e.event_id = c.first_played
                         LEFT JOIN events e1 ON e1.event_id = c.last_played
@@ -237,7 +237,7 @@ class Location(commands.Cog):
                         to_tsvector('english', name || ' ' || alpha_2 || ' ' ||
                             alpha_3 || coalesce(aliases, '')) fts,
                         ts_rank(fts, query) rank,
-                        similarity(name || ' ' || alpha_2 || ' ' || alpha_3 ||
+                        extensions.SIMILARITY(name || ' ' || alpha_2 || ' ' || alpha_3 ||
                             coalesce(aliases, ''), %(query)s) similarity
                     WHERE query @@ fts
                     ORDER BY similarity DESC, rank DESC NULLS LAST;

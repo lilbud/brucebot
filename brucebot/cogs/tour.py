@@ -74,10 +74,10 @@ class Tour(commands.Cog):
             """SELECT
                 t.*,
                 coalesce(e.event_date::text, e.event_id::text) AS first_date,
-                e.brucebase_url AS first_url,
+                e.event_id AS first_url,
                 v.formatted_loc as first_loc,
                 coalesce(e1.event_date::text, e1.event_id::text) AS last_date,
-                e1.brucebase_url AS last_url,
+                e1.event_id AS last_url,
                 v1.formatted_loc AS last_loc
             FROM "tours" t
             LEFT JOIN events e ON e.event_id = t.first_show
@@ -102,7 +102,7 @@ class Tour(commands.Cog):
             ctx,
             tour["tour_name"],
             "",
-            f"http://brucebase.wikidot.com/tour:{tour['brucebase_id']}",
+            f"https://www.databruce.com/tours/{tour['id']}",
         )
 
         thumbnail = f"https://raw.githubusercontent.com/lilbud/brucebot/main/images/tours/{tour['brucebase_tag']}.jpg"
@@ -148,20 +148,20 @@ class Tour(commands.Cog):
 
         first_show_button = discord.ui.Button(
             style="link",
-            url=f"http://brucebase.wikidot.com{tour['first_url']}",
+            url=f"https://www.databruce.com/events/{tour['first_url']}",
             label="First Show",
             row=2,
         )
 
         last_show_button = discord.ui.Button(
             style="link",
-            url=f"http://brucebase.wikidot.com{tour['last_url']}",
+            url=f"https://www.databruce.com/events/{tour['last_url']}",
             label="Last Show",
             row=2,
         )
 
-        view.add_item(item=shows_button)
-        view.add_item(item=songs_button)
+        # view.add_item(item=shows_button)
+        # view.add_item(item=songs_button)
         view.add_item(item=first_show_button)
         view.add_item(item=last_show_button)
 

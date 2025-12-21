@@ -99,7 +99,7 @@ class Setlist(commands.Cog):
             """
                 SELECT DISTINCT
                     e.*,
-                    'http://brucebase.wikidot.com/venue:' || v1.brucebase_url AS venue_url,
+                    v.id as venue_id,
                     v.formatted_loc AS venue_loc,
                     t1.name AS tour_leg,
                     r.name AS run,
@@ -112,7 +112,7 @@ class Setlist(commands.Cog):
                 LEFT JOIN runs r ON r.id = e.run
                 WHERE e.event_date = %(date)s
                 ORDER BY e.event_id
-                """,  # noqa: E501
+                """,
             {"date": date},
         )
 
@@ -131,7 +131,7 @@ class Setlist(commands.Cog):
             """
                 SELECT DISTINCT
                     e.*,
-                    'http://brucebase.wikidot.com/venue:' || v1.brucebase_url AS venue_url,
+                    v.id as venue_id,
                     v.formatted_loc AS venue_loc,
                     t1.name AS tour_leg,
                     r.name AS run,
@@ -144,7 +144,7 @@ class Setlist(commands.Cog):
                 LEFT JOIN runs r ON r.id = e.run
                 WHERE e.event_id = %(event)s
                 ORDER BY e.event_id
-                """,  # noqa: E501
+                """,
             {"event": event},
         )
 
@@ -193,9 +193,11 @@ class Setlist(commands.Cog):
         cur: psycopg.AsyncCursor,
     ) -> discord.File | discord.Embed:
         """Create embed."""
-        venue_url = await utils.format_link(event["venue_url"], event["venue_loc"])
+        # venue_url = await utils.format_link(event["venue_url"], event["venue_loc"])
 
-        description = [f"**Venue:** {venue_url}"]
+        description = [
+            f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_id']})",
+        ]
 
         if event["event_title"]:
             description.append(f"**Title:** {event['event_title']}")
@@ -209,7 +211,15 @@ class Setlist(commands.Cog):
             description.append(text)
 
         if event["note"]:
-            description.append(f"**Notes:**\n- {event['note']}")
+            notes = []
+            for i in str(event["note"]).splitlines():
+                if "<br>" not in i:
+                    i = re.sub(r"\[(.*)\]\(.*\)", r"\1", i)
+
+                    notes.append(f"- {i}")
+
+            if notes:
+                description.append(f"**Notes:**\n{'\n'.join(notes)}")
 
         releases = await self.get_releases(event["event_id"], cur)
 
@@ -227,7 +237,7 @@ class Setlist(commands.Cog):
             ctx=ctx,
             title=title,
             description="\n".join(description),
-            url=f"http://brucebase.wikidot.com{event['brucebase_url']}",
+            url=f"https://www.databruce.com/events/{event['event_id']}",
         )
 
         res = await cur.execute(

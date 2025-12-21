@@ -59,7 +59,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                             THEN ' #' ELSE '' END as date,
                         b.name AS artist,
                         v.formatted_loc AS location,
-                        e.brucebase_url AS url
+                        e.event_id AS url
                     FROM "events" e
                     LEFT JOIN bands b ON b.id = e.artist
                     LEFT JOIN venues_text v ON v.id = e.venue_id
@@ -80,7 +80,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                 )
 
                 data = [
-                    f"**{row['artist']}:**\n- [{row['date']} - {row['location']}](http://brucebase.wikidot.com{row['url']}) [{row['event_type']}]\n"  # noqa: E501
+                    f"**{row['artist']}:**\n- [{row['date']} - {row['location']}](https://www.databruce.com/events/{row['url']}) [{row['event_type']}]\n"  # noqa: E501
                     for row in otd_results
                 ]
 

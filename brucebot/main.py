@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 class BruceBot(commands.Bot):
     """Custom Discord.py Bot implementation."""
 
-    logging.basicConfig(format="%(message)s", level=logging.INFO)
+    logging.basicConfig(format="%(message)s", level=logging.ERROR)
 
     def __init__(self, prefix: str, ext_dir: Path) -> None:
         """Initialize custom bot."""

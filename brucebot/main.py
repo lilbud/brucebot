@@ -11,11 +11,14 @@ from cogs.bot_stuff import db
 from discord.ext import commands
 from dotenv import load_dotenv
 
+COGS_PATH = os.path.join(os.path.dirname(__file__), "cogs")
+# COGS_PATH = Path(__file__).parent / "cogs"
+
 
 class BruceBot(commands.Bot):
     """Custom Discord.py Bot implementation."""
 
-    logging.basicConfig(format="%(message)s", level=logging.ERROR)
+    logging.basicConfig(format="%(message)s", level=logging.INFO)
 
     def __init__(self, prefix: str, ext_dir: Path) -> None:
         """Initialize custom bot."""

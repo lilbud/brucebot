@@ -1,5 +1,5 @@
 import ftfy
-from cogs.bot_stuff import bot_embed, db
+from cogs.bot_stuff import bot_embed, db, utils
 from discord.ext import commands
 from psycopg.rows import dict_row
 
@@ -34,9 +34,19 @@ class Location(commands.Cog):
         """Embed for city."""
         embed = await bot_embed.create_embed(ctx=ctx, title=location["name"])
 
+        first_event = await utils.format_link(
+            url=f"https://databruce.com/events/{location['first_event']}",
+            text=location["first_event_date"],
+        )
+
+        last_event = await utils.format_link(
+            url=f"https://databruce.com/events/{location['last_event']}",
+            text=location["last_event_date"],
+        )
+
         embed.add_field(name="Num Events:", value=location["num_events"])
-        embed.add_field(name="First:", value=location["first_event"])
-        embed.add_field(name="Last:", value=location["last_event"])
+        embed.add_field(name="First:", value=first_event)
+        embed.add_field(name="Last:", value=last_event)
 
         await ctx.send(embed=embed)
 
@@ -76,16 +86,33 @@ class Location(commands.Cog):
         ):
             res = await cur.execute(
                 """
+                WITH search_results AS (
                     SELECT
-                        *
+                        CASE WHEN c1.id in (2,6,37) then concat_ws(', ', c.name, s.state_abbrev) else s.name end,
+                        c.num_events,
+                        e.event_date as first_event_date,
+                        e.event_id as first_event,
+                        e1.event_date as last_event_date,
+                        e1.event_id as last_event,
+                        c.fts_name_vector,
+                        websearch_to_tsquery('english', %(query)s) AS q
                     FROM
-                        cities c,
-                        plainto_tsquery('english', %(query)s) query,
-                        to_tsvector(unaccent(name || ' ' || coalesce(aliases, ''))) fts,
-                        ts_rank(fts, query) rank,
-                        extensions.SIMILARITY(unaccent(name || ' ' || coalesce(aliases, '')), %(query)s) similarity
-                    WHERE query @@ fts
-                    ORDER BY similarity DESC, rank DESC NULLS LAST;
+                        cities c
+                    left join states s on s.id = c.state
+                    left join countries c1 on c1.id = s.country
+                    LEFT JOIN events e ON e.id = s.first_event
+                    LEFT JOIN events e1 ON e1.id = s.last_event
+                    WHERE
+                        c.fts_name_vector @@ websearch_to_tsquery('english', %(query)s)
+                )
+                SELECT
+                    *
+                FROM
+                    search_results
+                ORDER BY
+                    extensions.SIMILARITY(%(query)s, name) DESC,
+                    ts_rank(fts_name_vector, q) DESC
+                LIMIT 1;
                 """,
                 {"query": city},
             )
@@ -93,25 +120,7 @@ class Location(commands.Cog):
             city = await res.fetchone()
 
             if city:
-                res = await cur.execute(
-                    """
-                    SELECT
-                        CASE WHEN c.state IS NOT NULL THEN c.name || ', ' || s.state_abbrev ELSE c.name END AS name,
-                        c.num_events,
-                        '[' || coalesce(e.event_date::text, e.event_id) || '](https://www.databruce.com/events/' || e.event_id || ')' as first_event,
-                        '[' || coalesce(e1.event_date::text, e1.event_id) || '](https://www.databruce.com/events/' || e1.event_id || ')' as last_event
-                    FROM cities c
-                    LEFT JOIN states s ON s.id = c.state
-                    LEFT JOIN events e ON e.event_id = c.first_played
-                    LEFT JOIN events e1 ON e1.event_id = c.last_played
-                    WHERE c.id = %(id)s
-                    """,
-                    {"id": city["id"]},
-                )
-
-                city_info = await res.fetchone()
-
-                await self.location_embed(location=city_info, ctx=ctx)
+                await self.location_embed(location=city, ctx=ctx)
             else:
                 embed = await bot_embed.not_found_embed(
                     command="city",
@@ -143,36 +152,32 @@ class Location(commands.Cog):
             ):
                 res = await cur.execute(
                     """
-                        WITH states_fts AS (
-                            SELECT
-                                s.name || ', ' || c.name AS name,
-                                s.name AS state_name,
-                                s.state_abbrev,
-                                c.name AS country,
-                                '[' || coalesce(e.event_date::text, e.event_id) ||
-                                    '](https://www.databruce.com/events/' ||
-                                    e.event_id || ')' AS first_event,
-                                '[' || coalesce(e1.event_date::text, e1.event_id) ||
-                                    '](https://www.databruce.com/events/' ||
-                                    e1.event_id || ')' AS last_event,
-                                s.num_events
-                                FROM states s
-                            LEFT JOIN countries c ON c.id = s.country
-                            LEFT JOIN events e ON e.event_id = s.first_played
-                            LEFT JOIN events e1 ON e1.event_id = s.last_played
-                        )
+                    WITH search_results AS (
                         SELECT
-                            *
+                            CASE WHEN c1.id in (2,6,37) then concat_ws(', ', s.name, c1.name) else s.name end,
+                            s.num_events,
+                            e.event_date as first_event_date,
+                            e.event_id as first_event,
+                            e1.event_date as last_event_date,
+                            e1.event_id as last_event,
+                            s.fts_name_vector,
+                            websearch_to_tsquery('english', 'pa') AS q
                         FROM
-                            states_fts,
-                            plainto_tsquery('english', %(query)s) query,
-                            to_tsvector('english', state_name || ' ' || state_abbrev ||
-                                ' ' || country) fts,
-                            ts_rank(fts, query) rank,
-                            extensions.SIMILARITY(state_name || ' ' || state_abbrev ||
-                                ' ' || country, %(query)s) similarity
-                        WHERE query @@ fts
-                        ORDER BY similarity DESC, rank DESC NULLS LAST;
+                            states s
+                        left join countries c1 on c1.id = s.country
+                        LEFT JOIN events e ON e.id = s.first_event
+                        LEFT JOIN events e1 ON e1.id = s.last_event
+                        WHERE
+                            s.fts_name_vector @@ websearch_to_tsquery('english', 'pa')
+                    )
+                    SELECT
+                        *
+                    FROM
+                        search_results
+                    ORDER BY
+                        extensions.SIMILARITY('pa', name) DESC,
+                        ts_rank(fts_name_vector, q) DESC
+                    LIMIT 1;
                     """,
                     {"query": state},
                 )
@@ -212,35 +217,31 @@ class Location(commands.Cog):
             ):
                 res = await cur.execute(
                     """
-                    WITH states_fts AS (
+                    WITH search_results AS (
                         SELECT
                             c.name,
                             c.num_events,
-                            c.alpha_2,
-                            c.alpha_3,
-                            c.aliases,
-                            '[' || coalesce(e.event_date::text, e.event_id) ||
-                                '](https://www.databruce.com/events/' ||
-                                e.event_id || ')' AS first_event,
-                            '[' || coalesce(e1.event_date::text, e1.event_id) ||
-                                '](https://www.databruce.com/events/' ||
-                                e1.event_id || ')' AS last_event
-                            FROM countries c
-                        LEFT JOIN events e ON e.event_id = c.first_played
-                        LEFT JOIN events e1 ON e1.event_id = c.last_played
+                            coalesce(e.event_date::text, e.event_id) as first_event_date,
+                            e.event_id as first_event,
+                            coalesce(e1.event_date::text, e1.event_id) as last_event_date,
+                            e1.event_id as last_event,
+                            c.fts_name_vector,
+                            websearch_to_tsquery('english', %(query)s) AS q
+                        FROM
+                            countries c
+                        LEFT JOIN events e ON e.id = c.first_event
+                        LEFT JOIN events e1 ON e1.id = c.last_event
+                        WHERE
+                            c.fts_name_vector @@ websearch_to_tsquery('english', %(query)s)
                     )
                     SELECT
                         *
                     FROM
-                        states_fts,
-                        plainto_tsquery('english', %(query)s) query,
-                        to_tsvector('english', name || ' ' || alpha_2 || ' ' ||
-                            alpha_3 || coalesce(aliases, '')) fts,
-                        ts_rank(fts, query) rank,
-                        extensions.SIMILARITY(name || ' ' || alpha_2 || ' ' || alpha_3 ||
-                            coalesce(aliases, ''), %(query)s) similarity
-                    WHERE query @@ fts
-                    ORDER BY similarity DESC, rank DESC NULLS LAST;
+                        search_results
+                    ORDER BY
+                        extensions.SIMILARITY(%(query)s, name) DESC,
+                        ts_rank(fts_name_vector, q) DESC
+                    LIMIT 1;
                     """,
                     {"query": country},
                 )

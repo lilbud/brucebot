@@ -117,7 +117,7 @@ class Archive(commands.Cog):
                             a.archive_url,
                             a.created_at
                         FROM archive_links a
-                        LEFT JOIN events e USING(event_id)
+                        LEFT JOIN events e on e.id = a.event_id
                         WHERE e.event_date::text = %(query)s
                         """,
                     {"query": date.strftime("%Y-%m-%d")},
@@ -145,7 +145,7 @@ class Archive(commands.Cog):
                             a.archive_url,
                             a.created_at
                         FROM archive_links a
-                        LEFT JOIN events e USING(event_id)
+                        LEFT JOIN events e on e.id = a.event_id
                         ORDER BY a.created_at DESC LIMIT 10
                         """,
                 )

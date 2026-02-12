@@ -1,6 +1,6 @@
 import discord
 import psycopg
-from cogs.bot_stuff import bot_embed, db
+from cogs.bot_stuff import bot_embed, db, utils
 from discord.ext import commands
 from psycopg.rows import dict_row
 
@@ -67,14 +67,24 @@ class Relation(commands.Cog):
 
         embed.add_field(name="Appearances", value=relation["appearances"])
 
+        first_event = await utils.format_link(
+            url=f"https://databruce.com/events/{relation['first_event']}",
+            text=relation["first_event_date"],
+        )
+
+        last_event = await utils.format_link(
+            url=f"https://databruce.com/events/{relation['last_event']}",
+            text=relation["last_event_date"],
+        )
+
         embed.add_field(
             name="First Appearance:",
-            value=f"[{relation['first_date']}](https://www.databruce.com/events/{relation['first_url']})",
+            value=first_event,
         )
 
         embed.add_field(
             name="Last Appearance:",
-            value=f"[{relation['last_date']}](https://www.databruce.com/events/{relation['last_url']})",
+            value=last_event,
         )
 
         return embed
@@ -100,20 +110,35 @@ class Relation(commands.Cog):
         ):
             res = await cur.execute(
                 """
-                SELECT
-                    id,
-                    rank,
-                    similarity
-                FROM
-                    "relations",
-                    plainto_tsquery('english', %(query)s) query,
-                    to_tsvector('english', unaccent("name") || ' ' || COALESCE("aliases", ''::"text")) fts,
-                    ts_rank(fts, query) rank,
-                    extensions.SIMILARITY(%(query)s,
-                        unaccent(name) || ' ' ||
-                        coalesce(aliases, '')) similarity
-                WHERE query @@ fts
-                ORDER BY appearances DESC, rank DESC, similarity DESC NULLS LAST LIMIT 1
+                    WITH search_results AS (
+                        SELECT
+                            r.*,
+                            coalesce(e.event_date::text, e.event_id) as first_event_date,
+                            e.event_id as first_event,
+                            coalesce(e1.event_date::text, e1.event_id) as last_event_date,
+                            e1.event_id as last_event,
+                            string_agg(r1.name, ',') as aliases,
+                            websearch_to_tsquery('english', %(query)s) AS q
+                        FROM
+                            relations r
+                        LEFT JOIN events e ON e.id = r.first_event
+                        LEFT JOIN events e1 ON e1.id = r.last_event
+                        left join relation_aliases r1 on r1.relation_id = r.id
+                        WHERE
+                            r.fts_name_vector @@ websearch_to_tsquery('english', %(query)s)
+                            or
+                            r1.fts_name_vector @@ websearch_to_tsquery('english', %(query)s)
+                        group by r.id, e.event_date, e1.event_date, e.event_id, e1.event_id
+                    )
+                    SELECT
+                        *
+                    FROM
+                        search_results sr
+                    ORDER BY
+                        appearances desc,
+                        extensions.SIMILARITY(%(query)s, sr.name) DESC,
+                        ts_rank(sr.fts_name_vector, q) DESC
+                    LIMIT 1;
                     """,  # noqa: E501
                 {"query": relation_query},
             )
@@ -121,12 +146,12 @@ class Relation(commands.Cog):
             relation = await res.fetchone()
 
             if relation is not None:
-                relation_info = await self.get_relation_info(
-                    relation_id=relation["id"],
-                    cur=cur,
-                )
+                # relation_info = await self.get_relation_info(
+                #     relation_id=relation["id"],
+                #     cur=cur,
+                # )
 
-                embed = await self.relation_embed(relation=relation_info, ctx=ctx)
+                embed = await self.relation_embed(relation=relation, ctx=ctx)
 
                 await ctx.send(embed=embed)
             else:

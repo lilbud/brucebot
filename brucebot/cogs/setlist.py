@@ -27,7 +27,7 @@ class Setlist(commands.Cog):
             """SELECT
                 MAX(e.event_id) AS id
             FROM "setlists" s
-            LEFT JOIN "events" e USING(event_id)
+            LEFT JOIN "events" e on e.id = s.event_id
             """,
         )
 
@@ -41,29 +41,19 @@ class Setlist(commands.Cog):
         """Get notes for an event and return."""
         res = await cur.execute(
             """
-                SELECT DISTINCT
-                    s.num,
-                    s.note,
-                    s.note || CASE
-                        WHEN s.note ~ ANY(ARRAY['_*Tour Debut_*', '_*Bustout_*'])
-                        THEN ', LTP: ' || e.event_date || ' (' || s.gap || ' shows)'
-                        ELSE ''
-                    END as formatted_note,
-                    e.event_date,
-                    s.gap
-                FROM
-                setlist_notes s
-                LEFT JOIN events e ON e.event_id = s.last
-                WHERE s.event_id = %(event)s
-                ORDER BY num
+            SELECT
+                s.num,
+                s.note
+            FROM
+            setlist_notes_new s
+            LEFT JOIN events e ON e.event_id = s.event_id
+            WHERE e.event_id = %(event)s
+            ORDER BY num
             """,
             {"event": event_id},
         )
 
-        return [
-            f"\t\t[{row['num']}] {row['formatted_note']}"
-            for row in await res.fetchall()
-        ]
+        return [f"\t\t[{row['num']}] {row['note']}" for row in await res.fetchall()]
 
     async def get_run(
         self,
@@ -100,7 +90,7 @@ class Setlist(commands.Cog):
                 SELECT DISTINCT
                     e.*,
                     v.id as venue_id,
-                    v.formatted_loc AS venue_loc,
+                    v.full_location AS venue_loc,
                     t1.name AS tour_leg,
                     r.name AS run,
                     t.tour_name AS tour
@@ -132,7 +122,7 @@ class Setlist(commands.Cog):
                 SELECT DISTINCT
                     e.*,
                     v.id as venue_id,
-                    v.formatted_loc AS venue_loc,
+                    v.full_location AS venue_loc,
                     t1.name AS tour_leg,
                     r.name AS run,
                     t.tour_name AS tour
@@ -164,9 +154,9 @@ class Setlist(commands.Cog):
                     '[Archive.org](https://archive.org/details/' || a.archive_url || ')' AS archive,
                     coalesce(r.name, null) AS release
                 FROM events e
-                LEFT JOIN archive_links a USING(event_id)
-                LEFT JOIN "nugs_releases" n USING(event_id)
-                LEFT JOIN releases r USING (event_id)
+                LEFT JOIN archive_links a on a.event_id = e.id
+                LEFT JOIN "nugs_releases" n on n.event_id = e.id
+                LEFT JOIN releases r on r.event_id = e.id
                 WHERE e.event_id=%(event)s
             ) t
             """,
@@ -246,10 +236,10 @@ class Setlist(commands.Cog):
                 s.set_name,
                 s.setlist
             FROM "setlists_by_set_and_date" s
-            LEFT JOIN "events" e USING (event_id)
-            WHERE s.event_id = %(event_id)s
-            GROUP BY s.event_id, s.set_name, s.setlist, s.set_order
-            ORDER BY s.set_order
+            LEFT JOIN "events" e on e.event_id = s.event_id
+            WHERE e.event_id = %(event_id)s
+            GROUP BY s.set_order, s.set_name, s.setlist
+            order by s.set_order
             """,
             event,
         )
@@ -284,7 +274,7 @@ class Setlist(commands.Cog):
 
                 embed.add_field(
                     name=set_name,
-                    value=f"{set_n['setlist']}",
+                    value=set_n["setlist"],
                     inline=False,
                 )
 

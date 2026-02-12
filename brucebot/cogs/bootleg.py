@@ -40,7 +40,7 @@ class Bootleg(commands.Cog):
             ctx=ctx,
             page_counter="Page $/&\nData gathered from SpringsteenLyrics",
             rows=6,
-            title=f"Bootleg results for:\n{date} - {bootlegs[0]['venue_loc']}",
+            title=f"Bootleg results for:\n{date} - {bootlegs[0]['formatted_loc']}",
         )
 
         sp_lyrics_button = ViewButton(
@@ -76,7 +76,7 @@ class Bootleg(commands.Cog):
         res = await cur.execute(
             """
             SELECT
-                DISTINCT unaccent(b.title) AS title,
+                DISTINCT extensions.unaccent(b.title) AS title,
                 b.label,
                 b.slid,
                 CASE
@@ -86,10 +86,13 @@ class Bootleg(commands.Cog):
                     WHEN b.category SIMILAR TO 'vid_*' THEN 'Video'
                 END as category,
                 b.media_type,
-                v.formatted_loc AS venue_loc
+                CASE WHEN c1.id in (2,6,37) then concat_ws(', ', v.name, c.name, s.state_abbrev) else concat_ws(', ', v.name, c.name, s.name, c1.name) end as formatted_loc
             FROM "bootlegs" b
-            LEFT JOIN "events" e ON e.event_id = b.event_id
-            LEFT JOIN "venues_text" v ON v.id = e.venue_id
+            LEFT JOIN "events" e ON e.id = b.event_id
+            left join venues v on v.id = e.venue_id
+            left join cities c on c.id = v.city
+            left join states s on s.id = c.state
+            left join countries c1 on c1.id = s.country
             WHERE e.event_date = %(query)s
             ORDER BY title ASC
             """,

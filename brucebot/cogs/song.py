@@ -22,7 +22,7 @@ class Song(commands.Cog):
                 to_char(e.event_date, 'YYYY') AS year,
                 COUNT(s.song_id) AS count
             from setlists s
-            LEFT JOIN events e ON e.event_id = s.event_id
+            LEFT JOIN events e ON e.id = s.event_id
             WHERE s.song_id = %(song)s
             AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
             GROUP BY to_char(e.event_date, 'YYYY')
@@ -45,7 +45,7 @@ class Song(commands.Cog):
                 t.tour_name AS tour,
                 count(*)
             FROM setlists s
-            LEFT JOIN events e ON e.event_id = s.event_id
+            LEFT JOIN events e ON e.id = s.event_id
             LEFT JOIN tours t ON t.id = e.tour_id
             WHERE
                 s.song_id = %(song)s
@@ -63,37 +63,37 @@ class Song(commands.Cog):
         """With provided URL from fts, get info on song."""
         res = await cur.execute(
             """
-            SELECT
-                s.id,
-                s.song_name,
-                s.brucebase_url,
-                e.event_id AS first_event,
-                e.event_date AS first_date,
-                e.event_id AS first_url,
-                e1.event_id AS last_event,
-                e1.event_date AS last_date,
-                e1.event_id AS last_url,
-                s.num_plays_public,
-                CASE WHEN s.num_plays_public > 0 THEN
-                round((s.num_plays_public /
-                    (SELECT COUNT(event_id) FROM "events"
-                    WHERE event_certainty=ANY(ARRAY['Confirmed', 'Probable']) AND event_id > s.first_played)::float * 100)::numeric, 2)
-                ELSE 0 END
-                AS frequency,
-                coalesce(min(s1.num_post_release), 0) AS num_post_release,
-                s.num_plays_snippet,
-                s.opener,
-                s.closer,
-                s.original_artist,
-                s.original,
-                s.spotify_id,
-                s.length
-            FROM "songs" s
-            LEFT JOIN "events" e ON e.event_id = s.first_played
-            LEFT JOIN "events" e1 ON e1.event_id = s.last_played
-            LEFT JOIN "songs_after_release" s1 ON s1.song_id = s.id
-            WHERE s.id = %(song_id)s
-            GROUP BY 1,4,7
+            with songs_cte as (
+                SELECT
+                    s.*,
+                    (array_agg(e.event_id order by e.event_id asc) FILTER (WHERE e.is_stats_eligible IS true))[1] as first,
+                    (array_agg(e.event_id order by e.event_id desc) FILTER (WHERE e.is_stats_eligible IS true))[1] as last,
+                    COUNT(DISTINCT s1.*) FILTER (WHERE set_name IN ('Show', 'Set 1', 'Set 2', 'Encore')) AS times_played
+                FROM "songs" s
+                left join setlists s1 on s1.song_id = s.id
+                left join events e on e.id = s1.event_id
+                GROUP BY s.id
+            )
+            select
+                sc.id,
+                sc.song_name,
+                e.event_id as first_event,
+                coalesce(e.event_date::text, e.event_id) as first_event_date,
+                e1.event_id as last_event,
+                coalesce(e1.event_date::text, e1.event_id) as last_event_date,
+                sc.opener,
+                sc.closer,
+                sc.original_artist,
+                sc.original,
+                sc.spotify_id,
+                sc.length,
+                sc.times_played,
+                round((sc.times_played /
+                (SELECT COUNT(event_id) FROM "events" WHERE is_stats_eligible is true AND event_id > sc.first)::float * 100)::numeric, 2) as frequency
+            from songs_cte sc
+            left join events e on e.event_id = sc.first
+            left join events e1 on e1.event_id = sc.last
+            where sc.id = %(song_id)s
             """,  # noqa: E501
             {"song_id": song_id},
         )
@@ -187,34 +187,19 @@ class Song(commands.Cog):
 
         embed.add_field(
             name="Performances:",
-            value=f"{song['num_plays_public']} ({song['num_post_release']})",
+            value=f"{song['times_played']}",
         )
 
-        if song["num_plays_public"] > 0:
-            if song["first_date"]:
-                first_played = song["first_date"]
-            else:
-                first_played = song["first_event"]
+        if song["times_played"] > 0:
+            first_date_value = await utils.format_link(
+                url=f"https://www.databruce.com/events/{song['first_event']}",
+                text=song["first_event_date"],
+            )
 
-            if song["last_date"]:  # noqa: SIM108
-                last_played = song["last_date"]
-            else:
-                last_played = song["last_event"]
-
-            first_date_value = first_played
-            last_date_value = last_played
-
-            if song["first_url"]:
-                first_date_value = await utils.format_link(
-                    url=f"https://www.databruce.com/events/{song['first_url']}",
-                    text=first_played,
-                )
-
-            if song["last_url"]:
-                last_date_value = await utils.format_link(
-                    url=f"https://www.databruce.com/events/{song['last_url']}",
-                    text=last_played,
-                )
+            last_date_value = await utils.format_link(
+                url=f"https://www.databruce.com/events/{song['last_event']}",
+                text=song["last_event_date"],
+            )
 
             gap = await self.calc_show_gap(cur=cur, last_show=song["last_event"])
 
@@ -232,11 +217,11 @@ class Song(commands.Cog):
             embed.add_field(name="Closer:", value=song["closer"])
             embed.add_field(name="Frequency:", value=f"{song['frequency']}%")
 
-            if song["num_plays_snippet"] > 0:
-                embed.add_field(
-                    name="Snippet:",
-                    value=f"{song['num_plays_snippet']}",
-                )
+            # if song["num_plays_snippet"] > 0:
+            #     embed.add_field(
+            #         name="Snippet:",
+            #         value=f"{song['num_plays_snippet']}",
+            #     )
 
         return embed
 

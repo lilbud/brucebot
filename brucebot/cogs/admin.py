@@ -37,6 +37,7 @@ class Admin(commands.Cog):
             await self.bot.reload_extension(f"cogs.{extension}")
             description = f"{extension} successfully reloaded"
             color = discord.Color.green()
+
         except commands.ExtensionNotLoaded as e:
             description = f"Failed to reload {extension}\n```{e}```"
             color = discord.Color.red()

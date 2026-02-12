@@ -53,16 +53,21 @@ class OnThisDay(commands.Cog, name="On This Day"):
             res = await cur.execute(
                 """
                     SELECT
-                        e.event_type,
-                        to_char(e.event_date, 'YYYY-MM-DD [Dy]')||
-                        CASE WHEN e.note LIKE '%%Placeholder%%'
-                            THEN ' #' ELSE '' END as date,
-                        b.name AS artist,
-                        v.formatted_loc AS location,
-                        e.event_id AS url
+                    e.event_type,
+                    to_char(e.event_date, 'YYYY-MM-DD [Dy]')||
+                    CASE WHEN e.event_date is null then ' #' else '' end as date,
+                    b.name AS artist,
+                    e.event_id,
+                    CASE WHEN c1.id in (2,6,37)
+                        then concat_ws(', ', v.name, c.name, s.state_abbrev)
+                        else concat_ws(', ', v.name, c.name, s.name, c1.name)
+                    end as formatted_loc
                     FROM "events" e
                     LEFT JOIN bands b ON b.id = e.artist
-                    LEFT JOIN venues_text v ON v.id = e.venue_id
+                    left join venues v on v.id = e.venue_id
+                    left join cities c on c.id = v.city
+                    left join states s on s.id = c.state
+                    left join countries c1 on c1.id = c.country
                     WHERE e.event_date::text LIKE %(date)s
                     ORDER BY e.event_id
                     """,
@@ -80,7 +85,7 @@ class OnThisDay(commands.Cog, name="On This Day"):
                 )
 
                 data = [
-                    f"**{row['artist']}:**\n- [{row['date']} - {row['location']}](https://www.databruce.com/events/{row['url']}) [{row['event_type']}]\n"  # noqa: E501
+                    f"**{row['artist']}:**\n- [{row['date']} - {row['formatted_loc']}](https://www.databruce.com/events/{row['event_id']}) [{row['event_type']}]\n"  # noqa: E501
                     for row in otd_results
                 ]
 

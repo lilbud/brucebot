@@ -31,21 +31,15 @@ class Tour(commands.Cog):
         res = await cur.execute(
             """
             SELECT
-                t.id,
-                t.brucebase_id,
-                t.tour_name,
-                t.num_shows,
-                t.num_songs,
-                coalesce(e.event_date::text, e.event_id) AS first_date,
-                coalesce(e1.event_date::text, e1.event_id) AS last_date,
-                v.formatted_loc AS first_loc,
-                v1.formatted_loc AS last_loc
-            FROM tours t
-            LEFT JOIN events e ON e.event_id = t.first_show
-            LEFT JOIN events e1 ON e1.event_id = t.last_show
-            LEFT JOIN venues_text v ON v.id = e.venue_id
-            LEFT JOIN venues_text v1 ON v1.id = e1.venue_id
-            ORDER BY t.first_show
+                t.*,
+                coalesce(e.event_date::text, e.event_id) AS first_event_date,
+                e.event_id AS first_event_id,
+                coalesce(e1.event_date::text, e1.event_id) AS last_event_date,
+                e1.event_id AS last_event_id
+            FROM "tours" t
+            LEFT JOIN events e ON e.id = t.first_event
+            LEFT JOIN events e1 ON e1.id = t.last_event
+            ORDER BY e.event_id
             """,
         )
 
@@ -54,10 +48,10 @@ class Tour(commands.Cog):
         for row in tours:
             shows = f"**Shows:** {row['num_shows']}"
             songs = f"**Songs:** {row['num_songs']}"
-            first_show = f"**First:** {row['first_date']} - {row['first_loc']}"
-            last_show = f"**Last:** {row['last_date']} - {row['last_loc']}"
+            first_show = f"**First:** [{row['first_event_date']}](https://www.databruce.com/events/{row['first_event_id']})"
+            last_show = f"**Last:** [{row['last_event_date']}](https://www.databruce.com/events/{row['last_event_id']})"
 
-            tour = f"### **{row['tour_name']}**\n- {shows}\t{songs}\n- {first_show}\n- {last_show}"  # noqa: E501
+            tour = f"### **[{row['tour_name']}](https://www.databruce.com/tours/{row['id']})**\n- {shows}\t{songs}\n- {first_show}\n- {last_show}"  # noqa: E501
             menu.add_row(tour)
 
         menu.add_button(ViewButton.back())
@@ -71,21 +65,19 @@ class Tour(commands.Cog):
     ) -> dict:
         """Get info with given tour_id."""
         res = await cur.execute(
-            """SELECT
+            """
+            SELECT
                 t.*,
-                coalesce(e.event_date::text, e.event_id::text) AS first_date,
-                e.event_id AS first_url,
-                v.formatted_loc as first_loc,
-                coalesce(e1.event_date::text, e1.event_id::text) AS last_date,
-                e1.event_id AS last_url,
-                v1.formatted_loc AS last_loc
+                coalesce(e.event_date::text, e.event_id) AS first_event_date,
+                e.event_id AS first_event_id,
+                coalesce(e1.event_date::text, e1.event_id) AS last_event_date,
+                e1.event_id AS last_event_id
             FROM "tours" t
-            LEFT JOIN events e ON e.event_id = t.first_show
-            LEFT JOIN events e1 ON e1.event_id = t.last_show
-            LEFT JOIN venues_text v ON v.id = e.venue_id
-            LEFT JOIN venues_text v1 ON v1.id = e1.venue_id
-            WHERE t.id = %s""",
-            (tour_id,),
+            LEFT JOIN events e ON e.id = t.first_event
+            LEFT JOIN events e1 ON e1.id = t.last_event
+            WHERE t.id = %(tour_id)s
+            """,
+            {"tour_id": tour_id},
         )
 
         return await res.fetchone()
@@ -122,46 +114,30 @@ class Tour(commands.Cog):
 
         embed.add_field(
             name="First Show:",
-            value=f"{tour['first_date']} - {tour['first_loc']}",
+            value=f"[{tour['first_event_date']}](https://www.databruce.com/events/{tour['first_event_id']})",
             inline=False,
         )
 
         embed.add_field(
             name="Last Show:",
-            value=f"{tour['last_date']} - {tour['last_loc']}",
+            value=f"[{tour['last_event_date']}](https://www.databruce.com/events/{tour['last_event_id']})",
             inline=True,
-        )
-
-        shows_button = discord.ui.Button(
-            style="link",
-            url=f"http://brucebase.wikidot.com/stats:shows-{tour['brucebase_id']}",
-            label="Shows on Tour",
-            row=1,
-        )
-
-        songs_button = discord.ui.Button(
-            style="link",
-            url=f"http://brucebase.wikidot.com/stats:songs-{tour['brucebase_id']}",
-            label="Songs Played on Tour",
-            row=1,
         )
 
         first_show_button = discord.ui.Button(
             style="link",
-            url=f"https://www.databruce.com/events/{tour['first_url']}",
+            url=f"https://www.databruce.com/events/{tour['first_event_id']}",
             label="First Show",
             row=2,
         )
 
         last_show_button = discord.ui.Button(
             style="link",
-            url=f"https://www.databruce.com/events/{tour['last_url']}",
+            url=f"https://www.databruce.com/events/{tour['last_event_id']}",
             label="Last Show",
             row=2,
         )
 
-        # view.add_item(item=shows_button)
-        # view.add_item(item=songs_button)
         view.add_item(item=first_show_button)
         view.add_item(item=last_show_button)
 
@@ -187,14 +163,24 @@ class Tour(commands.Cog):
             else:
                 res = await cur.execute(
                     """
+                        WITH search_results AS (
+                            SELECT
+                                t.*,
+                                websearch_to_tsquery('english', %(query)s) AS q
+                            FROM
+                                tours t
+                            WHERE
+                                t.fts_name_vector @@ websearch_to_tsquery('english', %(query)s)
+                        )
                         SELECT
-                            t.id
+                            *
                         FROM
-                            "tours" t,
-                            "to_tsvector"('"english"'::"regconfig", (((((("brucebase_id" || ' '::"text") || "tour_name") || ' '::"text") || "substr"("first_show", 3)) || ' '::"text") || "substr"("last_show", 3))) fts,
-                            plainto_tsquery('english', %(query)s) query
-                        WHERE query @@ fts
-                        ORDER BY t.num_shows DESC NULLS LAST;
+                            search_results sr
+                        ORDER BY
+                            num_shows desc,
+                            extensions.SIMILARITY(%(query)s, sr.tour_name) DESC,
+                            ts_rank(sr.fts_name_vector, q) DESC
+                        LIMIT 1;
                         """,  # noqa: E501
                     {"query": tour},
                 )

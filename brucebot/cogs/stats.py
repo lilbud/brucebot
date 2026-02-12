@@ -19,22 +19,40 @@ class Stats(commands.Cog):
         position: str,
     ) -> list[dict]:
         """Get opener/closer by tour_id."""
-        res = await cur.execute(
-            """SELECT
-                s1.song_name,
-                s.position,
-                count(*) AS total
-            FROM "setlists" s
-            LEFT JOIN "events" e USING (event_id)
-            LEFT JOIN "songs" s1 ON s1.id = s.song_id
-            WHERE s.position = %(position)s
-            AND e.tour_id = %(tour_id)s
-            AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
-            GROUP BY s1.song_name, s.position
-            ORDER BY count(*) DESC
-            """,
-            {"position": position, "tour_id": tour_id},
-        )
+        if position == "Show Opener":
+            res = await cur.execute(
+                """SELECT
+                    s1.song_name,
+                    s.position,
+                    count(*) AS total
+                FROM "setlists" s
+                LEFT JOIN "events" e on e.id = s.event_id
+                LEFT JOIN "songs" s1 ON s1.id = s.song_id
+                WHERE s.is_opener = true and s.set_name = 'Show'
+                AND e.tour_id = %(tour_id)s
+                AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
+                GROUP BY s1.song_name, s.position
+                ORDER BY count(*) DESC
+                """,
+                {"tour_id": tour_id},
+            )
+        elif position == "Show Closer":
+            res = await cur.execute(
+                """SELECT
+                    s1.song_name,
+                    s.position,
+                    count(*) AS total
+                FROM "setlists" s
+                LEFT JOIN "events" e on e.id = s.event_id
+                LEFT JOIN "songs" s1 ON s1.id = s.song_id
+                WHERE s.is_closer = true and s.is_last_in_show = true
+                AND e.tour_id = %(tour_id)s
+                AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore'])
+                GROUP BY s1.song_name, s.position
+                ORDER BY count(*) DESC
+                """,
+                {"tour_id": tour_id},
+            )
 
         return await res.fetchall()
 
@@ -45,16 +63,29 @@ class Stats(commands.Cog):
     ) -> dict:
         """."""
         res = await cur.execute(
-            """SELECT
-                t.id,
-                t.brucebase_id,
-                t.tour_name
+            """
+            WITH search_results AS (
+                SELECT
+                    t.id,
+                    t.tour_name,
+                    t.fts_name_vector,
+                    t.num_shows,
+                    websearch_to_tsquery('english', '2023') AS q
+                FROM
+                    tours t
+                WHERE
+                    t.fts_name_vector @@ websearch_to_tsquery('english', '2023')
+            )
+            SELECT
+                *
             FROM
-                "tours" t,
-                "to_tsvector"('"english"'::"regconfig", "tour_name") fts,
-                plainto_tsquery('english', %(tour)s) query
-            WHERE query @@ fts
-            ORDER BY t.id ASC NULLS LAST;""",
+                search_results sr
+            ORDER BY
+                sr.num_shows desc,
+                extensions.SIMILARITY('2023', sr.tour_name) DESC,
+                ts_rank(sr.fts_name_vector, q) DESC
+            LIMIT 1;
+            """,
             {"tour": tour},
         )
 
@@ -97,12 +128,19 @@ class Stats(commands.Cog):
 
             if len(songs) > 0:
                 res = await cur.execute(
-                    """SELECT o.* FROM "openers_closers" o LEFT JOIN "setlists" s
-                            ON s.position = o.position WHERE o.song_id=%s
-                            AND o.position LIKE '%%Opener'
-                            GROUP BY o.song_id, o.position, o.count
-                            ORDER BY min(s.song_num::int) ASC;""",
-                    (songs["id"],),
+                    """
+                    select
+                        s.song_id,
+                        case when s.set_name in ('Show', 'Set 1') then 'Show Opener'
+                        else s.set_name || ' Opener' end as position,
+                        count(*) as count
+                    from setlists s
+                    where s.is_opener is true
+                    and s.set_name in ('Show', 'Set 1', 'Set 2', 'Encore')
+                    and s.song_id = %(song)s
+                    group by 1,2
+                    """,
+                    {"song": songs["id"]},
                 )
 
                 openers_list = await res.fetchall()
@@ -156,12 +194,20 @@ class Stats(commands.Cog):
 
             if songs != []:
                 res = await cur.execute(
-                    """SELECT o.* FROM "openers_closers" o LEFT JOIN "setlists" s
-                            ON s.position = o.position WHERE o.song_id=%s
-                            AND o.position LIKE '%%Closer'
-                            GROUP BY o.song_id, o.position, o.count
-                            ORDER BY min(s.song_num::int) ASC;""",
-                    (songs["id"],),
+                    """
+                    select
+                        s.song_id,
+                        case when s.is_main_set_closer then 'Main Set Closer'
+                        when s.is_last_in_show then 'Show Closer'
+                        else s.set_name || ' Closer' end as position,
+                        count(*) as count
+                    from setlists s
+                    where s.is_closer is true
+                    and s.set_name in ('Show', 'Set 1', 'Set 2', 'Encore')
+                    and s.song_id = %(song)s
+                    group by 1,2
+                    """,
+                    {"song": songs["id"]},
                 )
 
                 closers_list = await res.fetchall()
@@ -174,6 +220,7 @@ class Stats(commands.Cog):
                     )
 
                     for i in closers_list:
+                        print(i)
                         embed.add_field(
                             name=i["position"],
                             value=i["count"],
@@ -219,6 +266,7 @@ class Stats(commands.Cog):
                     tour_id=tour["id"],
                     position="Show Opener",
                 )
+                print(stats)
 
                 data = [
                     f"{index}. **{row['song_name']}** - *{row['total']} time(s)*"
@@ -302,9 +350,9 @@ class Stats(commands.Cog):
                         s.position,
                         count(*) AS total
                     FROM "setlists" s
-                    LEFT JOIN "events" e USING (event_id)
+                    LEFT JOIN "events" e on e.id = s.event_id
                     LEFT JOIN "songs" s1 ON s1.id = s.song_id
-                    WHERE s.position = 'Show Opener'
+                    WHERE s.is_opener = true and s.set_name = 'Show'
                     AND to_char(e.event_date, 'YYYY') = %s
                     GROUP BY s1.song_name, s.position
                     ORDER BY count(*) DESC
@@ -355,10 +403,10 @@ class Stats(commands.Cog):
                         s.position,
                         count(*) AS total
                     FROM "setlists" s
-                    LEFT JOIN "events" e USING (event_id)
-                    LEFT JOIN "songs" s1 ON s1.id = s.song_id
-                    WHERE s.position = 'Show Closer'
-                        AND to_char(e.event_date, 'YYYY') = %s
+                    LEFT JOIN "events" e on e.id = s.event_id
+                    LEFT JOIN "songs" s1 ON s1.id = s.song_id!op
+                    WHERE s.is_closer = true and s.is_last_in_show = true
+                    AND to_char(e.event_date, 'YYYY') = %s
                     GROUP BY s1.song_name, s.position
                     ORDER BY count(*) DESC
                     """,

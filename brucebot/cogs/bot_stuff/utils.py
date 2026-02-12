@@ -1,5 +1,4 @@
 import datetime
-from urllib.parse import urlparse
 
 import dateparser
 import discord
@@ -30,12 +29,13 @@ async def format_link(url: str, text: str) -> str:
 
 async def create_link_button(
     url: str,
+    label: str = "",
 ) -> discord.ui.Button:
     """Create link button with provided URL."""
     return discord.ui.Button(
         style="link",
         url=url,
-        label=urlparse(url).netloc,
+        label=label,
     )
 
 
@@ -46,22 +46,26 @@ async def song_find_fuzzy(
     """Fuzzy search SONGS table using full text search."""
     res = await cur.execute(
         """
+        WITH search_results AS (
+            SELECT
+                s.id,
+                s.song_name,
+                s.fts_name_vector,
+                websearch_to_tsquery('english', %(query)s) AS q
+            FROM
+                songs s
+            WHERE
+                s.fts_name_vector @@ websearch_to_tsquery('english', %(query)s)
+        )
         SELECT
-            s.id,
-            s.brucebase_url,
-            s.song_name,
-            rank,
-            similarity
+            *
         FROM
-            "songs" s,
-            plainto_tsquery('english', %(query)s) query,
-            to_tsvector('english', unaccent(song_name) || ' ' || unaccent(COALESCE("short_name", "song_name")) || ' ' || COALESCE("original_artist", ''::"text") || ' ' || COALESCE("aliases", ''::"text")) fts,
-            ts_rank(fts, query) rank,
-            extensions.similarity(coalesce(aliases, '') || ' ' || coalesce(short_name, '') || ' ' || song_name, %(query)s) similarity
-        WHERE query @@ fts
-        AND similarity >= 0.0415
-        ORDER BY similarity DESC, rank DESC NULLS LAST LIMIT 1;
-        """,  # noqa: E501
+            search_results sr
+        ORDER BY
+            extensions.SIMILARITY(%(query)s, sr.song_name) DESC,
+            ts_rank(sr.fts_name_vector, q) DESC
+        LIMIT 1;
+        """,
         {"query": query},
     )
 

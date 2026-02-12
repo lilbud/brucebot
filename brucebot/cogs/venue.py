@@ -16,66 +16,56 @@ class Venue(commands.Cog):
     async def venue_embed(
         self,
         venue: dict,
-        stats: dict,
         ctx: commands.Context,
     ) -> discord.Embed:
         """Create the venue embed and sending."""
         embed = await bot_embed.create_embed(
             ctx=ctx,
-            title=venue["formatted_loc"],
+            title=venue["full_location"],
             description=f"**Nicknames:** {venue['aliases']}",
             url=f"https://www.databruce.com/venues/{venue['id']}",
         )
 
-        embed.add_field(name="Appearances", value=venue["num_events"])
+        embed.add_field(name="Appearances", value=venue["event_count"])
 
         embed.add_field(
             name="First Event:",
-            value=f"[{stats['first']['event_date']}](https://www.databruce.com/events/{stats['first']['event_id']})",
+            value=f"[{venue['first_event_date']}](https://www.databruce.com/events/{venue['first_event_id']})",
         )
 
         embed.add_field(
             name="Last Event:",
-            value=f"[{stats['last']['event_date']}](https://www.databruce.com/events/{stats['last']['event_id']})",
+            value=f"[{venue['last_event_date']}](https://www.databruce.com/events/{venue['last_event_date']})",
         )
 
         return embed
-
-    async def venue_stats(self, venue_id: id, cur: psycopg.AsyncCursor) -> dict:
-        """Get stats for the given venue."""
-        res = await cur.execute(
-            """
-            SELECT
-                coalesce(e.event_date::text, e.event_id) as event_date,
-                e.event_id
-            FROM events e
-            WHERE e.venue_id = %(query)s
-            ORDER BY e.event_date
-            """,
-            {"query": venue_id},
-        )
-
-        stats = await res.fetchall()
-        return {"first": stats[0], "last": stats[-1]}
 
     async def venue_search(self, query: str, cur: psycopg.AsyncCursor) -> dict:
         """Find best venue match using FTS."""
         res = await cur.execute(
             """
+            WITH search_results AS (
+                SELECT
+                    v.*,
+                    ts_rank_cd(v.tsv, websearch_to_tsquery('english', %(query)s)) AS fts_rank,
+                    extensions.similarity(v.location, %(query)s) as typo_score,
+                    log(v.event_count + 2) as pop_score,
+                    websearch_to_tsquery('english', %(query)s) as q
+                FROM
+                    venues_text v
+                WHERE
+                    v.tsv @@ websearch_to_tsquery('english', %(query)s)
+            )
             SELECT
                 *
             FROM
-                venues_text v
-                left join venues v1 ON v1.id = v.id,
-                plainto_tsquery('english', %(query)s) query,
-                to_tsvector('english', v.name || ' ' || v.location || ' ' ||
-                    coalesce(v1.aliases, '')) fts,
-                ts_rank(fts, query) rank,
-                extensions.similarity(v.name || ' ' || v.location || ' ' ||
-                    coalesce(v1.aliases, ''), %(query)s) similarity
-            WHERE query @@ fts
-            ORDER BY similarity DESC, rank DESC;
-            """,
+                search_results sr
+            ORDER BY
+                sr.pop_score desc,
+                extensions.SIMILARITY(%(query)s, sr.location) DESC,
+                ts_rank(sr.tsv, q) DESC
+            LIMIT 1;
+            """,  # noqa: E501
             {"query": query},
         )
 
@@ -107,9 +97,7 @@ class Venue(commands.Cog):
             venue = await self.venue_search(venue_query, cur)
 
             if venue is not None:
-                stats = await self.venue_stats(venue["id"], cur)
-
-                embed = await self.venue_embed(venue, stats, ctx)
+                embed = await self.venue_embed(venue, ctx)
 
                 await ctx.send(embed=embed)
             else:

@@ -23,27 +23,30 @@ class Album(commands.Cog):
         """Create embed with provided album info and send."""
         embed = await bot_embed.create_embed(
             ctx=ctx,
-            title=album["release_name"],
+            title=album["name"],
         )
 
         try:
-            embed.set_thumbnail(url=album["release_thumb"])
+            embed.set_thumbnail(url=album["thumb"])
         except TypeError:
             embed.set_thumbnail(
                 url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
             )
 
         embed.add_field(name="Release Date:", value=album["release_date"], inline=True)
-        embed.add_field(name="Album Type:", value=album["release_type"], inline=True)
+        embed.add_field(name="Album Type:", value=album["type"], inline=True)
+
+        least = album_stats["least"]
+        most = album_stats["most"]
 
         least_played_url = await utils.format_link(
-            url=album_stats["least"]["url"],
-            text=album_stats["least"]["song_name"],
+            url=f"https://databruce.com/songs/{least['song_id']}",
+            text=least["song_name"],
         )
 
         most_played_url = await utils.format_link(
-            url=album_stats["most"]["url"],
-            text=album_stats["most"]["song_name"],
+            url=f"https://databruce.com/songs/{most['song_id']}",
+            text=most["song_name"],
         )
 
         embed.add_field(
@@ -68,15 +71,31 @@ class Album(commands.Cog):
         """Get album tracks for the provided ID."""
         res = await cur.execute(
             """
-            SELECT
-                r.release_id,
-                'http://brucebase.wikidot.com' || s.brucebase_url AS url,
-                s.song_name,
-                s.num_plays_public AS times_played
-            FROM "release_tracks" r
-            LEFT JOIN "songs" s ON s.id = r.song_id
-            WHERE r.release_id = %(id)s
-            ORDER BY s.num_plays_public ASC
+            WITH song_stats AS (
+                SELECT
+                    s.id AS song_id,
+                    s.song_name,
+                    COUNT(DISTINCT s1.*) FILTER (WHERE set_name IN ('Show', 'Set 1', 'Set 2', 'Encore')) AS times_played
+                FROM "release_tracks" r
+                LEFT JOIN "songs" s ON s.id = r.song_id
+                LEFT JOIN "setlists" s1 ON s1.song_id = s.id
+                WHERE r.release_id = %(id)s
+                GROUP BY 1, 2
+            ),
+            ranked_stats AS (
+                SELECT *,
+                    RANK() OVER (ORDER BY times_played DESC) as most_played_rank,
+                    RANK() OVER (ORDER BY times_played ASC) as least_played_rank
+                FROM song_stats
+            )
+            SELECT 
+                song_name,
+                times_played,
+                song_id,
+                CASE WHEN most_played_rank = 1 THEN 'most' ELSE 'least' END as category
+            FROM ranked_stats
+            WHERE most_played_rank = 1 OR least_played_rank = 1
+            ORDER BY times_played asc;
             """,
             {"id": album_id},
         )
@@ -90,22 +109,16 @@ class Album(commands.Cog):
         res = await cur.execute(
             """
             SELECT
-                r.id,
-                r.brucebase_id,
-                r.mbid,
-                r.name AS release_name,
-                r.type AS release_type,
-                to_char(r.release_date, 'FMMonth DD, YYYY') AS release_date,
-                r.thumb AS release_thumb
+                r.*,
+                ts_rank_cd(fts_name_vector, websearch_to_tsquery('extensions.unaccent', %(query)s)) AS rank
             FROM
-                "releases" r,
-                plainto_tsquery('english', %(query)s) query,
-                to_tsvector('english', unaccent("name")) fts,
-                ts_rank(fts, query) rank,
-                extensions.SIMILARITY(%(query)s, coalesce(short_name, name)) similarity
-            WHERE query @@ fts
-            ORDER BY similarity DESC, rank DESC;
-            """,
+                releases r
+            WHERE
+                fts_name_vector @@ websearch_to_tsquery('extensions.unaccent', %(query)s)
+            ORDER BY
+                rank DESC
+            LIMIT 1;
+            """,  # noqa: E501
             {"query": ftfy.fix_text(query)},
         )
 
@@ -125,7 +138,7 @@ class Album(commands.Cog):
     ) -> None:
         """Search database for album.
 
-        Album can be found by name or alias.
+        Album can be found by name or short name
         """
         async with (
             await db.create_pool() as pool,
@@ -150,14 +163,17 @@ class Album(commands.Cog):
                     ctx=ctx,
                 )
 
-                brucebase_button = await utils.create_link_button(
+                databruce_button = await utils.create_link_button(
                     url=f"https://www.databruce.com/releases/{album['id']}",
-                )
-                musicbrainz_button = await utils.create_link_button(
-                    url=f"https://musicbrainz.org/release/{album['mbid']}",
+                    label="Databruce",
                 )
 
-                view.add_item(item=brucebase_button)
+                musicbrainz_button = await utils.create_link_button(
+                    url=f"https://musicbrainz.org/release-group/{album['mbid']}",
+                    label="MusicBrainz",
+                )
+
+                view.add_item(item=databruce_button)
                 view.add_item(item=musicbrainz_button)
 
                 await ctx.send(embed=embed, view=view)

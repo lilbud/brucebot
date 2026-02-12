@@ -18,20 +18,20 @@ class Info(commands.Cog):
             res = await cur.execute(
                 """
                 SELECT
-                    count(distinct b.brucebase_url)  || ' bands' AS band_count,
+                    count(distinct b.id)  || ' bands' AS band_count,
                     count(distinct e.event_id)  || ' events' AS event_count,
-                    count(distinct r.brucebase_url) || ' people' AS people_count,
+                    count(distinct r.id) || ' people' AS people_count,
                     count(distinct s.event_id)  || ' setlists' AS setlist_count,
-                    count(distinct s1.brucebase_url) || ' songs' AS song_count,
-                    count(distinct v.brucebase_url) || ' venues' AS venue_count,
+                    count(distinct s1.id) || ' songs' AS song_count,
+                    count(distinct v.id) || ' venues' AS venue_count,
                     (SELECT count(id) FROM bootlegs) || ' bootlegs' AS bootleg_count
                 FROM
                     events e
-                LEFT JOIN setlists s ON s.event_id = e.event_id
+                LEFT JOIN setlists s ON s.event_id = e.id
                 LEFT JOIN songs s1 ON s1.id = s.song_id
                 LEFT JOIN venues v ON v.id = e.venue_id
-                LEFT JOIN relations r ON r.first_appearance = e.event_id
-                LEFT JOIN bands b ON b.first_appearance = e.event_id
+                LEFT JOIN relations r ON r.first_event = e.id
+                LEFT JOIN bands b ON b.first_event = e.id
                 """,
             )
 

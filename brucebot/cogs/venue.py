@@ -23,7 +23,7 @@ class Venue(commands.Cog):
             ctx=ctx,
             title=venue["full_location"],
             description=f"**Nicknames:** {venue['aliases']}",
-            url=f"https://www.databruce.com/venues/{venue['id']}",
+            url=f"https://www.databruce.com/venues/{venue['venue_uuid']}",
         )
 
         embed.add_field(name="Appearances", value=venue["event_count"])
@@ -47,12 +47,14 @@ class Venue(commands.Cog):
             WITH search_results AS (
                 SELECT
                     v.*,
+                    v1.uuid as venue_uuid,
                     ts_rank_cd(v.tsv, websearch_to_tsquery('english', %(query)s)) AS fts_rank,
                     extensions.similarity(v.location, %(query)s) as typo_score,
                     log(v.event_count + 2) as pop_score,
                     websearch_to_tsquery('english', %(query)s) as q
                 FROM
                     venues_text v
+                left join venues v1 on v1.id = v.id
                 WHERE
                     v.tsv @@ websearch_to_tsquery('english', %(query)s)
             )

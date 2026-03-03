@@ -62,7 +62,7 @@ class Relation(commands.Cog):
             ctx=ctx,
             title=relation["name"],
             description=f"**Nicknames:** {relation['aliases']}",
-            url=f"https://www.databruce.com/relations/{relation['id']}",
+            url=f"https://www.databruce.com/relations/{relation['uuid']}",
         )
 
         embed.add_field(name="Appearances", value=relation["appearances"])

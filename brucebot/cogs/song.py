@@ -89,7 +89,8 @@ class Song(commands.Cog):
                 sc.length,
                 sc.times_played,
                 round((sc.times_played /
-                (SELECT COUNT(event_id) FROM "events" WHERE is_stats_eligible is true AND event_id > sc.first)::float * 100)::numeric, 2) as frequency
+                (SELECT COUNT(event_id) FROM "events" WHERE is_stats_eligible is true AND event_id > sc.first)::float * 100)::numeric, 2) as frequency,
+                sc.uuid
             from songs_cte sc
             left join events e on e.event_id = sc.first
             left join events e1 on e1.event_id = sc.last
@@ -272,7 +273,7 @@ class Song(commands.Cog):
                 if song_match["id"]:
                     brucebase_button = discord.ui.Button(
                         style="link",
-                        url=f"https://www.databruce.com/songs/{song_match['id']}",
+                        url=f"https://www.databruce.com/songs/{song_match['uuid']}",
                         label="Databruce",
                     )
 
@@ -497,7 +498,7 @@ class Song(commands.Cog):
                 embed = await bot_embed.create_embed(
                     ctx=ctx,
                     title=f"{song_info['song_name']} (snippet)",
-                    url=f"https://www.databruce.com/songs/{song_info['id']}",
+                    url=f"https://www.databruce.com/songs/{song_info['uuid']}",
                 )
 
                 if release:

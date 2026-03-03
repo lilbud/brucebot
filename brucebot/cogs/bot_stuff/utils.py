@@ -50,6 +50,7 @@ async def song_find_fuzzy(
             SELECT
                 s.id,
                 s.song_name,
+                s.uuid,
                 s.fts_name_vector,
                 websearch_to_tsquery('english', %(query)s) AS q
             FROM

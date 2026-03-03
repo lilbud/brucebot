@@ -40,12 +40,12 @@ class Album(commands.Cog):
         most = album_stats["most"]
 
         least_played_url = await utils.format_link(
-            url=f"https://databruce.com/songs/{least['song_id']}",
+            url=f"https://databruce.com/songs/{least['song_uuid']}",
             text=least["song_name"],
         )
 
         most_played_url = await utils.format_link(
-            url=f"https://databruce.com/songs/{most['song_id']}",
+            url=f"https://databruce.com/songs/{most['song_uuid']}",
             text=most["song_name"],
         )
 
@@ -74,6 +74,7 @@ class Album(commands.Cog):
             WITH song_stats AS (
                 SELECT
                     s.id AS song_id,
+                    s.uuid as song_uuid,
                     s.song_name,
                     COUNT(DISTINCT s1.*) FILTER (WHERE set_name IN ('Show', 'Set 1', 'Set 2', 'Encore')) AS times_played
                 FROM "release_tracks" r
@@ -92,6 +93,7 @@ class Album(commands.Cog):
                 song_name,
                 times_played,
                 song_id,
+                song_uuid,
                 CASE WHEN most_played_rank = 1 THEN 'most' ELSE 'least' END as category
             FROM ranked_stats
             WHERE most_played_rank = 1 OR least_played_rank = 1
@@ -164,7 +166,7 @@ class Album(commands.Cog):
                 )
 
                 databruce_button = await utils.create_link_button(
-                    url=f"https://www.databruce.com/releases/{album['id']}",
+                    url=f"https://www.databruce.com/releases/{album['uuid']}",
                     label="Databruce",
                 )
 

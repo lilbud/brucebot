@@ -48,7 +48,7 @@ class Setlist(commands.Cog):
             setlist_notes_new s
             LEFT JOIN events e ON e.event_id = s.event_id
             WHERE e.event_id = %(event)s
-            ORDER BY num
+            group by num, s.note ORDER BY num
             """,
             {"event": event_id},
         )
@@ -122,6 +122,7 @@ class Setlist(commands.Cog):
                 SELECT DISTINCT
                     e.*,
                     v.id as venue_id,
+                    v1.uuid as venue_uuid,
                     v.full_location AS venue_loc,
                     t1.name AS tour_leg,
                     r.name AS run,
@@ -186,7 +187,7 @@ class Setlist(commands.Cog):
         # venue_url = await utils.format_link(event["venue_url"], event["venue_loc"])
 
         description = [
-            f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_id']})",
+            f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_uuid']})",
         ]
 
         if event["event_title"]:

@@ -90,6 +90,7 @@ class Setlist(commands.Cog):
                 SELECT DISTINCT
                     e.*,
                     v.id as venue_id,
+                    v1.uuid as venue_uuid,
                     v.full_location AS venue_loc,
                     t1.name AS tour_leg,
                     r.name AS run,
@@ -139,7 +140,7 @@ class Setlist(commands.Cog):
             {"event": event},
         )
 
-        return await res.fetchall()
+        return await res.fetchone()
 
     async def get_releases(
         self,
@@ -185,6 +186,8 @@ class Setlist(commands.Cog):
     ) -> discord.File | discord.Embed:
         """Create embed."""
         # venue_url = await utils.format_link(event["venue_url"], event["venue_loc"])
+
+        print(event)
 
         description = [
             f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_uuid']})",

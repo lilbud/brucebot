@@ -66,8 +66,8 @@ class Song(commands.Cog):
             with songs_cte as (
                 SELECT
                     s.*,
-                    (array_agg(e.event_id order by e.event_id asc) FILTER (WHERE e.is_stats_eligible IS true))[1] as first,
-                    (array_agg(e.event_id order by e.event_id desc) FILTER (WHERE e.is_stats_eligible IS true))[1] as last,
+                    (array_agg(e.event_id order by e.event_id asc))[1] as first,
+                    (array_agg(e.event_id order by e.event_id desc))[1] as last,
                     COUNT(DISTINCT s1.*) FILTER (WHERE set_name IN ('Show', 'Set 1', 'Set 2', 'Encore')) AS times_played
                 FROM "songs" s
                 left join setlists s1 on s1.song_id = s.id
@@ -88,8 +88,9 @@ class Song(commands.Cog):
                 sc.spotify_id,
                 sc.length,
                 sc.times_played,
+                case when (SELECT COUNT(event_id) FROM "events" WHERE is_stats_eligible is true AND event_id > sc.first) > 0 then
                 round((sc.times_played /
-                (SELECT COUNT(event_id) FROM "events" WHERE is_stats_eligible is true AND event_id > sc.first)::float * 100)::numeric, 2) as frequency,
+                (SELECT COUNT(event_id) FROM "events" WHERE is_stats_eligible is true AND event_id > sc.first)::float * 100)::numeric, 2) end as frequency,
                 sc.uuid
             from songs_cte sc
             left join events e on e.event_id = sc.first
@@ -209,10 +210,16 @@ class Song(commands.Cog):
                 value=first_date_value,
             )
 
-            embed.add_field(
-                name="Last Played:",
-                value=f"{last_date_value} ({gap})",
-            )
+            if gap > 0:
+                embed.add_field(
+                    name="Last Played:",
+                    value=f"{last_date_value} ({gap})",
+                )
+            else:
+                embed.add_field(
+                    name="Last Played:",
+                    value=f"{last_date_value}",
+                )
 
             embed.add_field(name="Opener:", value=song["opener"])
             embed.add_field(name="Closer:", value=song["closer"])

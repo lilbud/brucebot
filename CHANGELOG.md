@@ -87,3 +87,8 @@
   - changed all Brucebase links to Databruce
   - fixed state command getting country first instead of state first
   - fixed venue search, had changed the venues_text view and never updated this
+- 2026-03-02:
+  - Redid much of the database schema, requiring a ton of changes to the bot.
+  - Also redid all the FTS searching functions. Originally had an issue where Supabase wouldn't work with vector columns but that seems to have been fixed.
+- 2026-03-11:
+  - Fixed issue with setlist command throwing a type error for latest setlist.

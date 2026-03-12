@@ -140,7 +140,7 @@ class Setlist(commands.Cog):
             {"event": event},
         )
 
-        return await res.fetchone()
+        return await res.fetchall()
 
     async def get_releases(
         self,
@@ -366,6 +366,8 @@ class Setlist(commands.Cog):
 
                     await ctx.send(embed=embed)
                     return
+
+            print(events)
 
             try:
                 if len(events) == 1:

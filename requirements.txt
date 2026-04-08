@@ -5,3 +5,5 @@ python-dotenv
 reactionmenu
 psycopg[binary,pool]
 ftfy
+bs4
+markdown

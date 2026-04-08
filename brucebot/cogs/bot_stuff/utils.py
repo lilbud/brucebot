@@ -1,9 +1,12 @@
 import datetime
+import re
 
 import dateparser
 import discord
 import psycopg
+from bs4 import BeautifulSoup
 from dateutil import parser
+from markdown import markdown
 
 
 async def date_parsing(date: str) -> datetime.datetime | str:
@@ -71,3 +74,17 @@ async def song_find_fuzzy(
     )
 
     return await res.fetchone()
+
+
+def markdown_to_text(markdown_string: str) -> str:
+    """Convert a markdown string to plaintext."""
+    # md -> html -> text since BeautifulSoup can extract text cleanly
+    html = markdown(markdown_string)
+
+    # remove code snippets
+    html = re.sub(r"<pre>(.*?)</pre>", " ", html)
+    html = re.sub(r"<code>(.*?)</code >", " ", html)
+
+    # extract text
+    soup = BeautifulSoup(html, "html.parser")
+    return "".join(soup.findAll(text=True))

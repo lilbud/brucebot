@@ -204,16 +204,19 @@ class Setlist(commands.Cog):
 
             description.append(text)
 
-        if event["note"]:
-            notes = []
-            for i in str(event["note"]).splitlines():
-                if "<br>" not in i:
-                    i = re.sub(r"\[(.*)\]\(.*\)", r"\1", i)
+        description.append(
+            f"**Notes:**\n{utils.markdown_to_text(event['note'])}",
+        )
 
-                    notes.append(f"- {i}")
+        # if event["note"]:
+        #     notes = []
+        #     for i in str(event["note"]).splitlines():
+        #         i = re.sub(r"\[(.*)\]\(.*\)", r"\1", i)
 
-            if notes:
-                description.append(f"**Notes:**\n{'\n'.join(notes)}")
+        #         notes.append(f"- {i}")
+
+        #     if notes:
+        #         description.append(f"**Notes:**\n{'\n'.join(notes)}")
 
         releases = await self.get_releases(event["event_id"], cur)
 

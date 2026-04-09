@@ -185,10 +185,6 @@ class Setlist(commands.Cog):
         cur: psycopg.AsyncCursor,
     ) -> discord.File | discord.Embed:
         """Create embed."""
-        # venue_url = await utils.format_link(event["venue_url"], event["venue_loc"])
-
-        print(event)
-
         description = [
             f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_uuid']})",
         ]
@@ -208,16 +204,6 @@ class Setlist(commands.Cog):
             description.append(
                 f"**Notes:**\n{utils.markdown_to_text(event['note'])}",
             )
-
-        # if event["note"]:
-        #     notes = []
-        #     for i in str(event["note"]).splitlines():
-        #         i = re.sub(r"\[(.*)\]\(.*\)", r"\1", i)
-
-        #         notes.append(f"- {i}")
-
-        #     if notes:
-        #         description.append(f"**Notes:**\n{'\n'.join(notes)}")
 
         releases = await self.get_releases(event["event_id"], cur)
 
@@ -370,8 +356,6 @@ class Setlist(commands.Cog):
 
                     await ctx.send(embed=embed)
                     return
-
-            print(events)
 
             try:
                 if len(events) == 1:

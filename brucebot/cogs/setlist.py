@@ -204,9 +204,10 @@ class Setlist(commands.Cog):
 
             description.append(text)
 
-        description.append(
-            f"**Notes:**\n{utils.markdown_to_text(event['note'])}",
-        )
+        if event["note"]:
+            description.append(
+                f"**Notes:**\n{utils.markdown_to_text(event['note'])}",
+            )
 
         # if event["note"]:
         #     notes = []

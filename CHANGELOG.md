@@ -92,3 +92,5 @@
   - Also redid all the FTS searching functions. Originally had an issue where Supabase wouldn't work with vector columns but that seems to have been fixed.
 - 2026-03-11:
   - Fixed issue with setlist command throwing a type error for latest setlist.
+- 2026-04-09:
+  - Fixed no event note causing AttributeError

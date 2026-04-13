@@ -131,7 +131,7 @@ class Song(commands.Cog):
             SELECT
                 count(event_id) AS gap
             FROM "events"
-            WHERE event_id > %s AND event_date < NOW()
+            WHERE event_id > %s AND event_date < NOW() and is_stats_eligible = true
             """,
             (last_show,),
         )

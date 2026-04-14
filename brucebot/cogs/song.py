@@ -19,14 +19,14 @@ class Song(commands.Cog):
         res = await cur.execute(
             """
             SELECT
-                to_char(e.event_date, 'YYYY') AS year,
+                EXTRACT(year FROM e.event_date) as year,
                 COUNT(s.song_id) AS count
             from setlists s
             LEFT JOIN events e ON e.id = s.event_id
             WHERE s.song_id = %(song)s
-            AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
-            GROUP BY to_char(e.event_date, 'YYYY')
-            ORDER BY to_char(e.event_date, 'YYYY')
+            AND s.set_name IN ('Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show')
+            GROUP BY 1
+            ORDER BY 1
             """,  # noqa: E501
             {"song": song_id},
         )
@@ -37,21 +37,24 @@ class Song(commands.Cog):
         """Use given url to count how many times a song has appeared by year."""
         res = await cur.execute(
             """
+            WITH valid_events AS (
+                SELECT id, event_date, tour_id FROM events WHERE tour_id NOT IN (43, 20, 23) AND event_date IS NOT NULL
+            )
             SELECT
                 CASE
                     WHEN to_char(MIN(e.event_date), 'YYYY') = to_char(MAX(e.event_date), 'YYYY') THEN to_char(MIN(e.event_date), 'YYYY')
                     ELSE to_char(MIN(e.event_date), 'YYYY') || '-' || to_char(MAX(e.event_date), 'YYYY')
                 END as years,
                 t.tour_name AS tour,
-                count(*)
+                count(s.*)
             FROM setlists s
-            LEFT JOIN events e ON e.id = s.event_id
+            LEFT JOIN valid_events e ON e.id = s.event_id
             LEFT JOIN tours t ON t.id = e.tour_id
             WHERE
                 s.song_id = %(song)s
-                AND t.id <> ALL(ARRAY[43, 20, 23])
-                AND s.set_name = ANY(ARRAY['Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show'])
-            GROUP BY t.tour_name
+                AND s.set_name IN ('Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Post-Show')
+                AND e.event_date IS NOT NULL
+            GROUP BY t.id
             ORDER BY count(*) DESC
             """,  # noqa: E501
             {"song": song_id},
@@ -63,41 +66,20 @@ class Song(commands.Cog):
         """With provided URL from fts, get info on song."""
         res = await cur.execute(
             """
-            with songs_cte as (
-                SELECT
-                    s.*,
-                    (array_agg(e.event_id order by e.event_id asc))[1] as first,
-                    (array_agg(e.event_id order by e.event_id desc))[1] as last,
-                    COUNT(DISTINCT s1.*) FILTER (WHERE set_name IN ('Show', 'Set 1', 'Set 2', 'Encore')) AS times_played
-                FROM "songs" s
-                left join setlists s1 on s1.song_id = s.id
-                left join events e on e.id = s1.event_id
-                GROUP BY s.id
-            )
             select
-                sc.id,
-                sc.song_name,
+                s.*,
                 e.event_id as first_event,
-                coalesce(e.event_date::text, e.event_id) as first_event_date,
+                coalesce(e.event_date::text, e.event_id) as first_date,
                 e1.event_id as last_event,
-                coalesce(e1.event_date::text, e1.event_id) as last_event_date,
-                sc.opener,
-                sc.closer,
-                sc.original_artist,
-                sc.original,
-                sc.spotify_id,
-                sc.length,
-                sc.times_played,
-                case when (SELECT COUNT(event_id) FROM "events" WHERE is_stats_eligible is true AND event_id > sc.first) > 0 then
-                round((sc.times_played /
-                (SELECT COUNT(event_id) FROM "events" WHERE is_stats_eligible is true AND event_id > sc.first)::float * 100)::numeric, 2) end as frequency,
-                sc.uuid
-            from songs_cte sc
-            left join events e on e.event_id = sc.first
-            left join events e1 on e1.event_id = sc.last
-            where sc.id = %(song_id)s
+                coalesce(e1.event_date::text, e1.event_id) as last_date,
+                ROUND((s.num_plays_public * 100.0) / (select count(*) from events where event_id >= e.event_id and is_stats_eligible is true), 2) as frequency
+            from
+                songs s
+            left join events e on e.id = s.first_event
+            left join events e1 on e1.id = s.last_event
+            where s.id = %(song)s
             """,  # noqa: E501
-            {"song_id": song_id},
+            {"song": song_id},
         )
 
         return await res.fetchone()
@@ -189,18 +171,18 @@ class Song(commands.Cog):
 
         embed.add_field(
             name="Performances:",
-            value=f"{song['times_played']}",
+            value=f"{song['num_plays_public']}",
         )
 
-        if song["times_played"] > 0:
+        if song["num_plays_public"] > 0:
             first_date_value = await utils.format_link(
                 url=f"https://www.databruce.com/events/{song['first_event']}",
-                text=song["first_event_date"],
+                text=song["first_date"],
             )
 
             last_date_value = await utils.format_link(
                 url=f"https://www.databruce.com/events/{song['last_event']}",
-                text=song["last_event_date"],
+                text=song["last_date"],
             )
 
             gap = await self.calc_show_gap(cur=cur, last_show=song["last_event"])
@@ -224,12 +206,6 @@ class Song(commands.Cog):
             embed.add_field(name="Opener:", value=song["opener"])
             embed.add_field(name="Closer:", value=song["closer"])
             embed.add_field(name="Frequency:", value=f"{song['frequency']}%")
-
-            # if song["num_plays_snippet"] > 0:
-            #     embed.add_field(
-            #         name="Snippet:",
-            #         value=f"{song['num_plays_snippet']}",
-            #     )
 
         return embed
 
@@ -278,13 +254,13 @@ class Song(commands.Cog):
                 )
 
                 if song_match["id"]:
-                    brucebase_button = discord.ui.Button(
+                    databruce_button = discord.ui.Button(
                         style="link",
                         url=f"https://www.databruce.com/songs/{song_match['uuid']}",
                         label="Databruce",
                     )
 
-                    view.add_item(item=brucebase_button)
+                    view.add_item(item=databruce_button)
 
                 if release and release["mbid"]:
                     musicbrainz_button = discord.ui.Button(

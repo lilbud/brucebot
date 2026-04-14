@@ -1,5 +1,4 @@
 import discord
-import psycopg
 from cogs.bot_stuff import bot_embed, db, utils
 from discord.ext import commands
 from psycopg.rows import dict_row
@@ -27,31 +26,6 @@ class Relation(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    async def get_relation_info(
-        self,
-        relation_id: int,
-        cur: psycopg.AsyncCursor,
-    ) -> dict:
-        """Get info for relation by id."""
-        res = await cur.execute(
-            """SELECT
-                r.id,
-                r.name,
-                r.appearances,
-                r.aliases,
-                coalesce(e.event_date::text, e.event_id) AS first_date,
-                e.event_id AS first_url,
-                coalesce(e1.event_date::text, e1.event_id) AS last_date,
-                e1.event_id AS last_url
-            FROM "relations" r
-            LEFT JOIN "events" e ON e.event_id = r.first_appearance
-            LEFT JOIN "events" e1 ON e1.event_id = r.last_appearance
-            WHERE r.id = %s""",
-            (relation_id,),
-        )
-
-        return await res.fetchone()
-
     async def relation_embed(
         self,
         relation: dict,
@@ -65,16 +39,18 @@ class Relation(commands.Cog):
             url=f"https://www.databruce.com/relations/{relation['uuid']}",
         )
 
+        print(relation)
+
         embed.add_field(name="Appearances", value=relation["appearances"])
 
         first_event = await utils.format_link(
             url=f"https://databruce.com/events/{relation['first_event']}",
-            text=relation["first_event_date"],
+            text=relation["first_date"],
         )
 
         last_event = await utils.format_link(
             url=f"https://databruce.com/events/{relation['last_event']}",
-            text=relation["last_event_date"],
+            text=relation["last_date"],
         )
 
         embed.add_field(
@@ -113,9 +89,9 @@ class Relation(commands.Cog):
                     WITH search_results AS (
                         SELECT
                             r.*,
-                            coalesce(e.event_date::text, e.event_id) as first_event_date,
+                            coalesce(e.event_date::text, e.event_id) as first_date,
                             e.event_id as first_event,
-                            coalesce(e1.event_date::text, e1.event_id) as last_event_date,
+                            coalesce(e1.event_date::text, e1.event_id) as last_date,
                             e1.event_id as last_event,
                             string_agg(r1.name, ',') as aliases,
                             websearch_to_tsquery('english', %(query)s) AS q
@@ -146,13 +122,7 @@ class Relation(commands.Cog):
             relation = await res.fetchone()
 
             if relation is not None:
-                # relation_info = await self.get_relation_info(
-                #     relation_id=relation["id"],
-                #     cur=cur,
-                # )
-
                 embed = await self.relation_embed(relation=relation, ctx=ctx)
-
                 await ctx.send(embed=embed)
             else:
                 embed = await bot_embed.not_found_embed(

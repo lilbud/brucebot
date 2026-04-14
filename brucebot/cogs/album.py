@@ -89,7 +89,7 @@ class Album(commands.Cog):
                     RANK() OVER (ORDER BY times_played ASC) as least_played_rank
                 FROM song_stats
             )
-            SELECT 
+            SELECT
                 song_name,
                 times_played,
                 song_id,

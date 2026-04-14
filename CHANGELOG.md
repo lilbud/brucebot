@@ -94,3 +94,6 @@
   - Fixed issue with setlist command throwing a type error for latest setlist.
 - 2026-04-09:
   - Fixed no event note causing AttributeError
+- 2026-04-13:
+  - Updated song info get to be a bit cleaner
+  - Fix relation not working

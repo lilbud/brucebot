@@ -46,7 +46,7 @@ class Setlist(commands.Cog):
                 s.note
             FROM
             setlist_notes_new s
-            LEFT JOIN events e ON e.event_id = s.event_id
+            LEFT JOIN events e ON e.id = s.event_id
             WHERE e.event_id = %(event)s
             group by num, s.note ORDER BY num
             """,

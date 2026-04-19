@@ -97,3 +97,5 @@
 - 2026-04-13:
   - Updated song info get to be a bit cleaner
   - Fix relation not working
+- 2026-04-18:
+  - Fixed issue with setlist. Changed setlists table to int id instead of string and didn't change the bot code.

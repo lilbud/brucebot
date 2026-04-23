@@ -99,3 +99,5 @@
   - Fix relation not working
 - 2026-04-18:
   - Fixed issue with setlist. Changed setlists table to int id instead of string and didn't change the bot code.
+- 2026-04-23:
+  - Fix division by zero error in Song when trying to calculate frequency for an unplayed song

@@ -72,9 +72,9 @@ class Song(commands.Cog):
                 coalesce(e.event_date::text, e.event_id) as first_date,
                 e1.event_id as last_event,
                 coalesce(e1.event_date::text, e1.event_id) as last_date,
-                ROUND((s.num_plays_public * 100.0) / (select count(*) from events where event_id >= e.event_id and is_stats_eligible is true), 2) as frequency
-            from
-                songs s
+                case when s.num_plays_public > 0 THEN
+                ROUND((s.num_plays_public * 100.0) / (select count(*) from events where event_id >= e.event_id and is_stats_eligible is true), 2) ELSE 0 end as frequency
+            from songs s
             left join events e on e.id = s.first_event
             left join events e1 on e1.id = s.last_event
             where s.id = %(song)s

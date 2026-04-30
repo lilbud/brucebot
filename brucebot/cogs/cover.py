@@ -82,7 +82,7 @@ class Cover(commands.Cog):
                             n.thumbnail_url AS cover_url,
                             'Nugs' AS source
                         FROM nugs_releases n
-                        LEFT JOIN events e ON e.event_id = n.event_id
+                        LEFT JOIN events e ON e.id = n.event_id
                         WHERE e.event_date = %(date)s""",
                     {"date": date.strftime("%Y-%m-%d")},
                 )

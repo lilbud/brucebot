@@ -105,3 +105,6 @@
   - Fix issue on covers trying to join on wrong events column
 - 2026-06-05:
   - Remove `<detail>` element from event note
+- 2026-06-06:
+  - Add `!user` command, allows pulling stats from Database about shows/songs a user has seen. Only gets users with Discord names attached to the Databruce profile.
+  - Add `!users` command. Shows users and # of shows attended. Optional "discord" param to filter for only users who've added their Discord names to Databruce profile.

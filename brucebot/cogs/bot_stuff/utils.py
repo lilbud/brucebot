@@ -83,7 +83,8 @@ def markdown_to_text(markdown_string: str) -> str:
 
     # remove code snippets
     html = re.sub(r"<pre>(.*?)</pre>", " ", html)
-    html = re.sub(r"<code>(.*?)</code >", " ", html)
+    html = re.sub(r"<code>(.*?)</code>", " ", html)
+    html = re.sub(r"<details>[\s\S]*</details>", " ", html)
 
     # extract text
     soup = BeautifulSoup(html, "html.parser")

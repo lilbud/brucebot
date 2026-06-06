@@ -1,6 +1,6 @@
 # CHANGELOG
 
-### This changelog was part of the README, but its now moved to its own file.
+### This changelog was part of the README, but its now moved to its own file
 
 - 2024-07-30 - Initial commit, almost all features from Brucebot 1.0 moved over. Complete rewrite of bot from scratch, largely due to a rewrite of the Databruce project.
 - 2024-08-04 - fixed none short_name breaking song embed
@@ -51,7 +51,7 @@
   - fixed song tour command, removed two generated columns and never changed the command to match.
 - 2025-05-03
   - updated `songs_first_release` view to be much simpler. Rather than getting every release for a song, it only gets the first, and includes the release_id. This can then easily be used with a JOIN in SQL to get the rest of the info.
-  - updated frequency formula based on Dripfield.pro's method. The original method was `num_plays_public/num_events`, which was sort of incorrect, as it counted *every* event. When in reality, the "correct" way is to count events that have happened since the song premiered. This doesn't change the values a ton, but they should be slightly more correct now.
+  - updated frequency formula based on Dripfield.pro's method. The original method was `num_plays_public/num_events`, which was sort of incorrect, as it counted _every_ event. When in reality, the "correct" way is to count events that have happened since the song premiered. This doesn't change the values a ton, but they should be slightly more correct now.
   - Added musicbrainz link to song embed.
   - fixed venue links not showing up right. Somehow, the `venues_text` table got wiped and everything set to NULL. Really not sure how that happened, as the SQL command is still in the backups.
   - added tour leg and event run to embed description
@@ -103,3 +103,5 @@
   - Fix division by zero error in Song when trying to calculate frequency for an unplayed song
 - 2026-04-30:
   - Fix issue on covers trying to join on wrong events column
+- 2026-06-05:
+  - Remove `<detail>` element from event note

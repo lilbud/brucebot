@@ -46,7 +46,7 @@ class User(commands.Cog):
                 left join events e on e.id = u.event_id
                 left join setlists s on s.event_id = e.id
                 where
-                    lower(discord_name) = %(username)s
+                    lower(discord_name) = %(username)s or lower(username) = %(username)s
                 group by 1
                 """,
                 {"username": username.lower()},

@@ -1,0 +1,34 @@
+name: Deploy Django to DigitalOcean
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Droplet via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Move into the application directory
+            cd /home/lilbud/brucebot
+
+            # Pull the latest changes from GitHub
+            git stash
+            git pull
+            git stash drop
+
+            # Reload Gunicorn using systemd
+            sudo systemctl restart brucebot

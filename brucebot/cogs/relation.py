@@ -39,7 +39,7 @@ class Relation(commands.Cog):
             url=f"https://www.databruce.com/relations/{relation['uuid']}",
         )
 
-        print(relation)
+        # print(relation)
 
         embed.add_field(name="Appearances", value=relation["appearances"])
 

@@ -1,5 +1,5 @@
 import traceback
-from typing import Literal, Optional
+from typing import Literal
 
 import discord
 from cogs.bot_stuff import bot_embed
@@ -100,7 +100,7 @@ class Admin(commands.Cog):
         self,
         ctx: commands.Context,
         guilds: commands.Greedy[discord.Object],
-        spec: Optional[Literal["~", "*", "^"]] = None,  # noqa: FA100
+        spec: Literal["~", "*", "^"] | None = None,
     ) -> None:
         """Sync commands."""
         if not guilds:

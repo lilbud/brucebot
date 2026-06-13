@@ -220,7 +220,7 @@ class Stats(commands.Cog):
                     )
 
                     for i in closers_list:
-                        print(i)
+                        # print(i)
                         embed.add_field(
                             name=i["position"],
                             value=i["count"],
@@ -266,7 +266,7 @@ class Stats(commands.Cog):
                     tour_id=tour["id"],
                     position="Show Opener",
                 )
-                print(stats)
+                # print(stats)
 
                 data = [
                     f"{index}. **{row['song_name']}** - *{row['total']} time(s)*"

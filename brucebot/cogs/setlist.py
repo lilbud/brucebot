@@ -201,7 +201,7 @@ class Setlist(commands.Cog):
             description.append(text)
 
         if event["note"]:
-            print(event["note"])
+            # print(event["note"])
             description.append(
                 f"**Notes:**\n{utils.markdown_to_text(event['note'])}",
             )
@@ -244,10 +244,7 @@ class Setlist(commands.Cog):
         notes = await self.get_event_notes(event_id=event["event_id"], cur=cur)
 
         if len(setlist) == 0:
-            if (
-                event["event_date"]
-                > datetime.datetime.now(tz=datetime.timezone.utc).date()
-            ):
+            if event["event_date"] > datetime.datetime.now(tz=datetime.UTC).date():
                 embed.add_field(
                     name="Setlist:",
                     value="_Event Hasn't Happened Yet_",

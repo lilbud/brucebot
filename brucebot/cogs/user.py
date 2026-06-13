@@ -62,7 +62,7 @@ class User(commands.Cog):
                     f"https://www.databruce.com/profile/{stats['user_id']}",
                 )
 
-                embed.set_thumbnail(url=ctx.author.avatar.url)
+                # embed.set_thumbnail(url=ctx.author.avatar.url)
 
                 embed.add_field(
                     name="First Event:",

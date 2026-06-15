@@ -34,6 +34,7 @@ class User(commands.Cog):
                 select
                     distinct au.id,
                     au.uuid as user_id,
+                    au.username,
                     min(e.event_id) as first_id,
                     min(e.event_date) as first_date,
                     max(e.event_id) as last_id,
@@ -57,7 +58,7 @@ class User(commands.Cog):
             if stats:
                 embed = await bot_embed.create_embed(
                     ctx,
-                    f"{username} Stats",
+                    f"{stats['username']} Stats",
                     "",
                     f"https://www.databruce.com/profile/{stats['user_id']}",
                 )

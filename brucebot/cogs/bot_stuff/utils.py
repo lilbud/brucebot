@@ -9,46 +9,46 @@ from dateutil import parser
 from markdown import markdown
 
 
-async def date_parsing(date: str) -> datetime.datetime | str:
-    """Input date parsing.
+async def date_parsing(date: str) -> datetime.date | str | None:
+  """Input date parsing.
 
-    Attempt to parse the provided the date into a Python datetime object.
-    If parsing fails, return the input. The cog will usually throw its
-    own error if date is required.
-    """
-    try:
-        return dateparser.parse(date).date()
-    except (parser.ParserError, AttributeError):
-        return date
+  Attempt to parse the provided the date into a Python datetime object.
+  If parsing fails, return the input. The cog will usually throw its
+  own error if date is required.
+  """
+  try:
+    return dateparser.parse(date).date()
+  except (parser.ParserError, AttributeError):
+    return date
 
 
 async def format_link(url: str, text: str) -> str:
-    """Format link as markdown.
+  """Format link as markdown.
 
-    Returns a short link in markdown format given a url and text.
-    """
-    return f"[{text}](<{url}>)"
+  Returns a short link in markdown format given a url and text.
+  """
+  return f"[{text}](<{url}>)"
 
 
 async def create_link_button(
-    url: str,
-    label: str = "",
+  url: str,
+  label: str = "",
 ) -> discord.ui.Button:
-    """Create link button with provided URL."""
-    return discord.ui.Button(
-        style="link",
-        url=url,
-        label=label,
-    )
+  """Create link button with provided URL."""
+  return discord.ui.Button(
+    style="link",
+    url=url,
+    label=label,
+  )
 
 
 async def song_find_fuzzy(
-    query: str,
-    cur: psycopg.AsyncCursor,
+  query: str,
+  cur: psycopg.AsyncCursor,
 ) -> dict:
-    """Fuzzy search SONGS table using full text search."""
-    res = await cur.execute(
-        """
+  """Fuzzy search SONGS table using full text search."""
+  res = await cur.execute(
+    """
         WITH search_results AS (
             SELECT
                 s.id,
@@ -70,22 +70,22 @@ async def song_find_fuzzy(
             ts_rank(sr.fts_name_vector, q) DESC
         LIMIT 1;
         """,
-        {"query": query},
-    )
+    {"query": query},
+  )
 
-    return await res.fetchone()
+  return await res.fetchone()
 
 
 def markdown_to_text(markdown_string: str) -> str:
-    """Convert a markdown string to plaintext."""
-    # md -> html -> text since BeautifulSoup can extract text cleanly
-    html = markdown(markdown_string)
+  """Convert a markdown string to plaintext."""
+  # md -> html -> text since BeautifulSoup can extract text cleanly
+  html = markdown(markdown_string)
 
-    # remove code snippets
-    html = re.sub(r"<pre>(.*?)</pre>", " ", html)
-    html = re.sub(r"<code>(.*?)</code>", " ", html)
-    html = re.sub(r"<details>[\s\S]*</details>", " ", html)
+  # remove code snippets
+  html = re.sub(r"<pre>(.*?)</pre>", " ", html)
+  html = re.sub(r"<code>(.*?)</code>", " ", html)
+  html = re.sub(r"<details>[\s\S]*</details>", " ", html)
 
-    # extract text
-    soup = BeautifulSoup(html, "html.parser")
-    return "".join(soup.findAll(text=True))
+  # extract text
+  soup = BeautifulSoup(html, "html.parser")
+  return "".join(soup.findAll(text=True))

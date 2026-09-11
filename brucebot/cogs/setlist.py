@@ -13,56 +13,57 @@ from psycopg.rows import dict_row
 
 
 class Setlist(commands.Cog):
-    """Collection of commands for pulling setlists for different shows."""
+  """Collection of commands for pulling setlists for different shows."""
 
-    def __init__(self, bot: commands.Bot) -> None:
-        """Init Setlist cog with bot."""
-        self.bot = bot
-        self.imgpath = Path(Path(__file__).parents[2], "images", "releases")
-        self.description = "Find setlists by date"
+  def __init__(self, bot: commands.Bot) -> None:
+    """Init Setlist cog with bot."""
+    self.bot = bot
+    self.imgpath = Path(Path(__file__).parents[2], "images", "releases")
+    self.description = "Find setlists by date"
 
-    async def get_latest_setlist(self, cur: psycopg.AsyncCursor) -> str:
-        """When no date provided, get the most recent show."""
-        res = await cur.execute(
-            """SELECT
+  async def get_latest_setlist(self, cur: psycopg.AsyncCursor) -> str:
+    """When no date provided, get the most recent show."""
+    res = await cur.execute(
+      """SELECT
                 MAX(e.event_id) AS id
             FROM "setlists" s
             LEFT JOIN "events" e on e.id = s.event_id
             """,
-        )
+    )
 
-        return await res.fetchone()
+    return await res.fetchone()
 
-    async def get_event_notes(
-        self,
-        event_id: str,
-        cur: psycopg.AsyncCursor,
-    ) -> list[str]:
-        """Get notes for an event and return."""
-        res = await cur.execute(
-            """
+  async def get_event_notes(
+    self,
+    event_id: str,
+    cur: psycopg.AsyncCursor,
+  ) -> list[str]:
+    """Get notes for an event and return."""
+    res = await cur.execute(
+      """
             SELECT
                 s.num,
                 s.note
             FROM
-            setlist_notes_new s
+            setlist_notes s
             LEFT JOIN events e ON e.id = s.event_id
-            WHERE e.event_id = %(event)s
+            LEFT JOIN setlists s1 ON s1.id = s.setlist_id
+            WHERE e.event_id = %(event)s and s1.set_name in ('Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show', 'Rehearsal')
             group by num, s.note ORDER BY num
             """,
-            {"event": event_id},
-        )
+      {"event": event_id},
+    )
 
-        return [f"\t\t[{row['num']}] {row['note']}" for row in await res.fetchall()]
+    return [f"\t\t[{row['num']}] {row['note']}" for row in await res.fetchall()]
 
-    async def get_run(
-        self,
-        event: str,
-        cur: psycopg.AsyncCursor,
-    ) -> str:
-        """Get the position and number of shows in a run for a run and event."""
-        res = await cur.execute(
-            """
+  async def get_run(
+    self,
+    event: str,
+    cur: psycopg.AsyncCursor,
+  ) -> str:
+    """Get the position and number of shows in a run for a run and event."""
+    res = await cur.execute(
+      """
             SELECT run_name FROM (
                 SELECT
                     e.event_id,
@@ -73,20 +74,20 @@ class Setlist(commands.Cog):
                 LEFT JOIN runs r ON r.id = e.run
             ) t WHERE t.event_id = %(event)s
             """,  # noqa: E501
-            {"event": event},
-        )
+      {"event": event},
+    )
 
-        run = await res.fetchone()
-        return run["run_name"]
+    run = await res.fetchone()
+    return run["run_name"]
 
-    async def get_events_by_exact_date(
-        self,
-        date: str,
-        cur: psycopg.AsyncCursor,
-    ) -> list["str"]:
-        """Get events for a given date."""
-        res = await cur.execute(
-            """
+  async def get_events_by_exact_date(
+    self,
+    date: str,
+    cur: psycopg.AsyncCursor,
+  ) -> list["str"]:
+    """Get events for a given date."""
+    res = await cur.execute(
+      """
                 SELECT DISTINCT
                     e.*,
                     v.id as venue_id,
@@ -104,22 +105,22 @@ class Setlist(commands.Cog):
                 WHERE e.event_date = %(date)s
                 ORDER BY e.event_id
                 """,
-            {"date": date},
-        )
+      {"date": date},
+    )
 
-        return await res.fetchall()
+    return await res.fetchall()
 
-    async def get_event_by_id(
-        self,
-        event: str,
-        cur: psycopg.AsyncCursor,
-    ) -> list["str"]:
-        """Get event for a given id.
+  async def get_event_by_id(
+    self,
+    event: str,
+    cur: psycopg.AsyncCursor,
+  ) -> list["str"]:
+    """Get event for a given id.
 
-        Used when the input is the Databruce ID (YYYYMMDD-XX).
-        """
-        res = await cur.execute(
-            """
+    Used when the input is the Databruce ID (YYYYMMDD-XX).
+    """
+    res = await cur.execute(
+      """
                 SELECT DISTINCT
                     e.*,
                     v.id as venue_id,
@@ -137,19 +138,19 @@ class Setlist(commands.Cog):
                 WHERE e.event_id = %(event)s
                 ORDER BY e.event_id
                 """,
-            {"event": event},
-        )
+      {"event": event},
+    )
 
-        return await res.fetchall()
+    return await res.fetchall()
 
-    async def get_releases(
-        self,
-        event_id: str,
-        cur: psycopg.AsyncCursor,
-    ) -> list:
-        """Get all releases, nugs and/or archive if exist."""
-        res = await cur.execute(
-            """
+  async def get_releases(
+    self,
+    event_id: str,
+    cur: psycopg.AsyncCursor,
+  ) -> list:
+    """Get all releases, nugs and/or archive if exist."""
+    res = await cur.execute(
+      """
             SELECT unnest(array_remove(array[nugs, archive, release], NULL)) AS links FROM (
                 SELECT
                     '[' || n.name || '](' || n.nugs_url || ')' AS nugs,
@@ -162,71 +163,69 @@ class Setlist(commands.Cog):
                 WHERE e.event_id=%(event)s
             ) t
             """,
-            {"event": event_id},
-        )
+      {"event": event_id},
+    )
 
-        return [rel["links"] for rel in await res.fetchall()]
+    return [rel["links"] for rel in await res.fetchall()]
 
-    async def parse_brucebase_url(self, url: str, cur: psycopg.AsyncCursor) -> str:
-        """Use provided Brucebase URL to get event_id."""
-        url = re.sub(r"(http\:\/\/)?brucebase.wikidot.com", "", url)
+  async def parse_brucebase_url(self, url: str, cur: psycopg.AsyncCursor) -> str:
+    """Use provided Brucebase URL to get event_id."""
+    url = re.sub(r"(http\:\/\/)?brucebase.wikidot.com", "", url)
 
-        res = await cur.execute(
-            """SELECT e.event_id AS id FROM events e WHERE brucebase_url=%(url)s""",
-            {"url": url},
-        )
+    res = await cur.execute(
+      """SELECT e.event_id AS id FROM events e WHERE brucebase_url=%(url)s""",
+      {"url": url},
+    )
 
-        return await res.fetchone()
+    return await res.fetchone()
 
-    async def setlist_embed(
-        self,
-        event: dict,
-        ctx: commands.Context,
-        cur: psycopg.AsyncCursor,
-    ) -> discord.File | discord.Embed:
-        """Create embed."""
-        description = [
-            f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_uuid']})",
-        ]
+  async def setlist_embed(
+    self,
+    event: dict,
+    ctx: commands.Context,
+    cur: psycopg.AsyncCursor,
+  ) -> discord.File | discord.Embed:
+    """Create embed."""
+    description = [
+      f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_uuid']})",
+    ]
 
-        if event["event_title"]:
-            description.append(f"**Title:** {event['event_title']}")
+    if event["event_title"]:
+      description.append(f"**Title:** {event['event_title']}")
 
-        if event["tour"]:
-            text = f"**Tour:** {event['tour']}"
+    if event["tour"]:
+      text = f"**Tour:** {event['tour']}"
 
-            if event["tour_leg"]:
-                text = f"**Tour/Leg:** {event['tour']} / {event['tour_leg']}"
+      if event["tour_leg"]:
+        text = f"**Tour/Leg:** {event['tour']} / {event['tour_leg']}"
 
-            description.append(text)
+      description.append(text)
 
-        if event["note"]:
-            # print(event["note"])
-            description.append(
-                f"**Notes:**\n{utils.markdown_to_text(event['note'])}",
-            )
+    if event["note"]:
+      # print(event["note"])
+      description.append(
+        f"**Notes:**\n{utils.markdown_to_text(event['note'])}",
+      )
 
-        releases = await self.get_releases(event["event_id"], cur)
+    releases = await self.get_releases(event["event_id"], cur)
 
-        if len(releases) > 0:
-            description.append(f"**Releases:** {', '.join(releases)}")
+    if len(releases) > 0:
+      description.append(f"**Releases:** {', '.join(releases)}")
 
-        title = f"{event['event_date'].strftime('%Y-%m-%d [%a]')}"
+    title = f"{event['event_date'].strftime('%Y-%m-%d [%a]')}"
 
-        if event["early_late"]:
-            title = (
-                f"{event['event_date'].strftime('%Y-%m-%d [%a]')} {event['early_late']}"
-            )
+    if event["early_late"]:
+      title = f"{event['event_date'].strftime('%Y-%m-%d [%a]')} {event['early_late']}"
 
-        embed = await bot_embed.create_embed(
-            ctx=ctx,
-            title=title,
-            description="\n".join(description),
-            url=f"https://www.databruce.com/events/{event['event_id']}",
-        )
+    embed = await bot_embed.create_embed(
+      ctx=ctx,
+      title=title,
+      description="\n".join(description),
+      url=f"https://www.databruce.com/events/{event['event_id']}",
+    )
 
-        res = await cur.execute(
-            """
+    res = await cur.execute(
+      """
             SELECT
                 s.set_name,
                 s.setlist
@@ -236,158 +235,157 @@ class Setlist(commands.Cog):
             GROUP BY s.set_order, s.set_name, s.setlist
             order by s.set_order
             """,
-            event,
-        )
-
-        setlist = await res.fetchall()
-
-        notes = await self.get_event_notes(event_id=event["event_id"], cur=cur)
-
-        if len(setlist) == 0:
-            if event["event_date"] > datetime.datetime.now(tz=datetime.UTC).date():
-                embed.add_field(
-                    name="Setlist:",
-                    value="_Event Hasn't Happened Yet_",
-                    inline=False,
-                )
-            else:
-                embed.add_field(
-                    name="Setlist:",
-                    value="_No Set Details Known_",
-                    inline=False,
-                )
-        else:
-            for set_n in setlist:
-                match event["setlist_certainty"]:
-                    case "Incomplete":
-                        set_name = f"{set_n['set_name']} _(Incomplete)_:"
-                    case _:
-                        set_name = f"{set_n['set_name']}:"
-
-                embed.add_field(
-                    name=set_name,
-                    value=set_n["setlist"],
-                    inline=False,
-                )
-
-        if len(notes) > 0:
-            embed.add_field(
-                name="Setlist Notes:",
-                value=f"{re.sub("''", "'", '\n'.join(notes))}",
-            )
-
-        event_info = {
-            "run": await self.get_run(event["event_id"], cur),
-            "event": event["event_certainty"],
-            "setlist": event["setlist_certainty"],
-        }
-
-        footer = "\n".join(
-            [
-                f"{key.title()}: {value}"
-                for key, value in event_info.items()
-                if value is not None
-            ],
-        )
-        embed.set_footer(text=f"\n{footer}")
-
-        return embed
-
-    @commands.command(name="latest", aliases=["last"])
-    async def get_latest(
-        self,
-        ctx: commands.Context,
-        cur: psycopg.AsyncCursor,
-    ) -> None:
-        """Get most recent show."""
-        date = await self.get_latest_setlist(cur)
-
-        await ctx.invoke(self.bot.get_command("setlist"), date=date)
-
-    @commands.hybrid_command(
-        name="setlist",
-        aliases=["sl"],
-        description="Fetch setlists for a given date, leave empty to get most recent.",
-        usage="<date>",
+      event,
     )
-    async def get_setlists(
-        self,
-        ctx: commands.Context,
-        *,
-        date: str = "",
-    ) -> None:
-        """Fetch setlists for a given date.
 
-        Note: date must be past, not a future date.
-        """
-        async with (
-            await db.create_pool() as pool,
-            pool.connection() as conn,
-            conn.cursor(
-                row_factory=dict_row,
-            ) as cur,
-        ):
-            if re.search(r"\/(gig|rehearsal|nogig|recording|nobruce):", date):
-                event = await self.parse_brucebase_url(date, cur)
-                events = await self.get_event_by_id(event["id"], cur)
+    setlist = await res.fetchall()
 
-            elif date == "":
-                event = await self.get_latest_setlist(cur)
-                events = await self.get_event_by_id(event["id"], cur)
+    notes = await self.get_event_notes(event_id=event["event_id"], cur=cur)
 
-            elif re.search(r"\d{8}-\d{2}", date):  # databruce_id
-                events = await self.get_event_by_id(date, cur)
+    if len(setlist) == 0:
+      if event["event_date"] > datetime.datetime.now(tz=datetime.UTC).date():
+        embed.add_field(
+          name="Setlist:",
+          value="_Event Hasn't Happened Yet_",
+          inline=False,
+        )
+      else:
+        embed.add_field(
+          name="Setlist:",
+          value="_No Set Details Known_",
+          inline=False,
+        )
+    else:
+      for set_n in setlist:
+        match event["setlist_certainty"]:
+          case "Incomplete":
+            set_name = f"{set_n['set_name']} _(Incomplete)_:"
+          case _:
+            set_name = f"{set_n['set_name']}:"
 
-            else:
-                date = await utils.date_parsing(date)
+        embed.add_field(
+          name=set_name,
+          value=set_n["setlist"],
+          inline=False,
+        )
 
-                try:
-                    events = await self.get_events_by_exact_date(
-                        date=date.strftime("%Y-%m-%d"),
-                        cur=cur,
-                    )
-                except (ParserError, AttributeError):
-                    embed = discord.Embed(
-                        title="Incorrect Date Format",
-                        description=f"Failed to parse given date: `{date}`",
-                    )
+    if len(notes) > 0:
+      embed.add_field(
+        name="Setlist Notes:",
+        value=f"{re.sub("''", "'", '\n'.join(notes))}",
+      )
 
-                    await ctx.send(embed=embed)
-                    return
+    event_info = {
+      "run": await self.get_run(event["event_id"], cur),
+      "event": event["event_certainty"],
+      "setlist": event["setlist_certainty"],
+    }
 
-            try:
-                if len(events) == 1:
-                    embed = await self.setlist_embed(
-                        event=events[0],
-                        ctx=ctx,
-                        cur=cur,
-                    )
+    footer = "\n".join(
+      [
+        f"{key.title()}: {value}"
+        for key, value in event_info.items()
+        if value is not None
+      ],
+    )
+    embed.set_footer(text=f"\n{footer}")
 
-                    await ctx.send(embed=embed)
-                else:
-                    menu = await viewmenu.create_view_menu(
-                        ctx=ctx,
-                        style="Event $ of &",
-                    )
+    return embed
 
-                    embeds = [
-                        await self.setlist_embed(event=event, ctx=ctx, cur=cur)
-                        for event in events
-                    ]
+  @commands.command(name="latest", aliases=["last"])
+  async def get_latest(
+    self,
+    ctx: commands.Context,
+    cur: psycopg.AsyncCursor,
+  ) -> None:
+    """Get most recent show."""
+    date = await self.get_latest_setlist(cur)
 
-                    menu.add_pages(embeds)
+    await ctx.invoke(self.bot.get_command("setlist"), date=date)
 
-                    await menu.start()
+  @commands.hybrid_command(
+    name="setlist",
+    aliases=["sl"],
+    description="Fetch setlists for a given date, leave empty to get most recent.",
+    usage="<date>",
+  )
+  async def get_setlists(
+    self,
+    ctx: commands.Context,
+    *,
+    date: str = "",
+  ) -> None:
+    """Fetch setlists for a given date.
 
-            except (UnboundLocalError, reactionmenu.errors.NoPages):
-                embed = await bot_embed.not_found_embed(
-                    command=self.__class__.__name__,
-                    message=date,
-                )
+    Note: date must be past, not a future date.
+    """
+    async with (
+      await db.create_pool() as pool,
+      pool.connection() as conn,
+      conn.cursor(
+        row_factory=dict_row,
+      ) as cur,
+    ):
+      if re.search(r"\/(gig|rehearsal|nogig|recording|nobruce):", date):
+        event = await self.parse_brucebase_url(date, cur)
+        events = await self.get_event_by_id(event["id"], cur)
 
-                await ctx.send(embed=embed)
+      elif date == "":
+        event = await self.get_latest_setlist(cur)
+        events = await self.get_event_by_id(event["id"], cur)
+
+      elif re.search(r"\d{8}-\d{2}", date):  # databruce_id
+        events = await self.get_event_by_id(date, cur)
+
+      else:
+        date = await utils.date_parsing(date)
+
+        try:
+          events = await self.get_events_by_exact_date(
+            date=date.strftime("%Y-%m-%d"),
+            cur=cur,
+          )
+        except (ParserError, AttributeError):
+          embed = discord.Embed(
+            title="Incorrect Date Format",
+            description=f"Failed to parse given date: `{date}`",
+          )
+
+          await ctx.send(embed=embed)
+          return
+
+      try:
+        if len(events) == 1:
+          embed = await self.setlist_embed(
+            event=events[0],
+            ctx=ctx,
+            cur=cur,
+          )
+
+          await ctx.send(embed=embed)
+        else:
+          menu = await viewmenu.create_view_menu(
+            ctx=ctx,
+            style="Event $ of &",
+          )
+
+          embeds = [
+            await self.setlist_embed(event=event, ctx=ctx, cur=cur) for event in events
+          ]
+
+          menu.add_pages(embeds)
+
+          await menu.start()
+
+      except (UnboundLocalError, reactionmenu.errors.NoPages):
+        embed = await bot_embed.not_found_embed(
+          command=self.__class__.__name__,
+          message=date,
+        )
+
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Load extension into bot."""
-    await bot.add_cog(Setlist(bot))
+  """Load extension into bot."""
+  await bot.add_cog(Setlist(bot))

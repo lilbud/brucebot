@@ -7,17 +7,17 @@ from psycopg.rows import dict_row
 
 
 class Song(commands.Cog):
-    """Collection of commands for getting info on different songs."""
+  """Collection of commands for getting info on different songs."""
 
-    def __init__(self, bot: commands.Bot) -> None:
-        """Init Song cog with bot."""
-        self.bot = bot
-        self.description = "Find songs that Bruce has played live."
+  def __init__(self, bot: commands.Bot) -> None:
+    """Init Song cog with bot."""
+    self.bot = bot
+    self.description = "Find songs that Bruce has played live."
 
-    async def get_count_by_year(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
-        """Use given id to count how many times a song has appeared by year."""
-        res = await cur.execute(
-            """
+  async def get_count_by_year(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
+    """Use given id to count how many times a song has appeared by year."""
+    res = await cur.execute(
+      """
             SELECT
                 EXTRACT(year FROM e.event_date) as year,
                 COUNT(s.song_id) AS count
@@ -28,15 +28,15 @@ class Song(commands.Cog):
             GROUP BY 1
             ORDER BY 1
             """,  # noqa: E501
-            {"song": song_id},
-        )
+      {"song": song_id},
+    )
 
-        return await res.fetchall()
+    return await res.fetchall()
 
-    async def get_count_by_tour(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
-        """Use given url to count how many times a song has appeared by year."""
-        res = await cur.execute(
-            """
+  async def get_count_by_tour(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
+    """Use given url to count how many times a song has appeared by year."""
+    res = await cur.execute(
+      """
             WITH valid_events AS (
                 SELECT id, event_date, tour_id FROM events WHERE tour_id NOT IN (43, 20, 23) AND event_date IS NOT NULL
             )
@@ -57,15 +57,15 @@ class Song(commands.Cog):
             GROUP BY t.id
             ORDER BY count(*) DESC
             """,  # noqa: E501
-            {"song": song_id},
-        )
+      {"song": song_id},
+    )
 
-        return await res.fetchall()
+    return await res.fetchall()
 
-    async def get_song_info(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
-        """With provided URL from fts, get info on song."""
-        res = await cur.execute(
-            """
+  async def get_song_info(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
+    """With provided URL from fts, get info on song."""
+    res = await cur.execute(
+      """
             select
                 s.*,
                 e.event_id as first_event,
@@ -79,331 +79,331 @@ class Song(commands.Cog):
             left join events e1 on e1.id = s.last_event
             where s.id = %(song)s
             """,  # noqa: E501
-            {"song": song_id},
-        )
+      {"song": song_id},
+    )
 
-        return await res.fetchone()
+    return await res.fetchone()
 
-    async def get_first_release(
-        self,
-        song_id: int,
-        cur: psycopg.AsyncCursor,
-    ) -> dict:
-        """Get info on the first release of a given song."""
-        res = await cur.execute(
-            """SELECT
+  async def get_first_release(
+    self,
+    song_id: int,
+    cur: psycopg.AsyncCursor,
+  ) -> dict:
+    """Get info on the first release of a given song."""
+    res = await cur.execute(
+      """SELECT
                     r.name, r.release_date, r.mbid
                 FROM songs s
                 LEFT JOIN releases r ON r.id = s.album
                 WHERE s.id = %s AND r.id is not null
                 """,
-            (song_id,),
-        )
+      (song_id,),
+    )
 
-        return await res.fetchone()
+    return await res.fetchone()
 
-    async def calc_show_gap(
-        self,
-        cur: psycopg.AsyncCursor,
-        last_show: str,
-    ) -> int:
-        """Get gap between shows."""
-        res = await cur.execute(
-            """
+  async def calc_show_gap(
+    self,
+    cur: psycopg.AsyncCursor,
+    last_show: str,
+  ) -> int:
+    """Get gap between shows."""
+    res = await cur.execute(
+      """
             SELECT
                 count(event_id) AS gap
             FROM "events"
             WHERE event_id > %s AND event_date < NOW() and is_stats_eligible = true
             """,
-            (last_show,),
+      (last_show,),
+    )
+
+    show_gap = await res.fetchone()
+
+    return show_gap["gap"]
+
+  async def song_embed(
+    self,
+    song: dict,
+    release: dict,
+    ctx: commands.Context,
+    cur: psycopg.AsyncCursor,
+  ) -> discord.Embed:
+    """Create the song embed and sending."""
+    embed = await bot_embed.create_embed(
+      ctx=ctx,
+      title=song["song_name"],
+    )
+    view = discord.ui.View()
+
+    try:
+      embed.set_thumbnail(
+        url=f"https://coverartarchive.org/release-group/{release['mbid']}/front-500",
+      )
+    except TypeError:
+      embed.set_thumbnail(
+        url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
+      )
+
+    if release:
+      try:
+        embed.add_field(
+          name="Release:",
+          value=f"{release['name']} _({release['release_date'].strftime('%B %d, %Y')})_",  # noqa: E501
+          inline=False,
+        )
+      except AttributeError:
+        embed.add_field(
+          name="Release:",
+          value=f"{release['name']}",
+          inline=False,
         )
 
-        show_gap = await res.fetchone()
+    if song["original"] is False:
+      embed.add_field(
+        name="Original Artist:",
+        value=song["original_artist"],
+        inline=False,
+      )
 
-        return show_gap["gap"]
+    if song["length"]:
+      embed.add_field(name="Length:", value=song["length"], inline=False)
 
-    async def song_embed(
-        self,
-        song: dict,
-        release: dict,
-        ctx: commands.Context,
-        cur: psycopg.AsyncCursor,
-    ) -> discord.Embed:
-        """Create the song embed and sending."""
-        embed = await bot_embed.create_embed(
-            ctx=ctx,
-            title=song["song_name"],
+    embed.add_field(
+      name="Performances:",
+      value=f"{song['num_plays_public']}",
+    )
+
+    if song["num_plays_public"] > 0:
+      first_date_value = await utils.format_link(
+        url=f"https://www.databruce.com/events/{song['first_event']}",
+        text=song["first_date"],
+      )
+
+      last_date_value = await utils.format_link(
+        url=f"https://www.databruce.com/events/{song['last_event']}",
+        text=song["last_date"],
+      )
+
+      gap = await self.calc_show_gap(cur=cur, last_show=song["last_event"])
+
+      embed.add_field(
+        name="First Played:",
+        value=first_date_value,
+      )
+
+      if gap > 0:
+        embed.add_field(
+          name="Last Played:",
+          value=f"{last_date_value} ({gap})",
         )
+      else:
+        embed.add_field(
+          name="Last Played:",
+          value=f"{last_date_value}",
+        )
+
+      embed.add_field(name="Opener:", value=song["opener"])
+      embed.add_field(name="Closer:", value=song["closer"])
+      embed.add_field(name="Frequency:", value=f"{song['frequency']}%")
+
+    return embed
+
+  @commands.hybrid_group(
+    name="song",
+    description="Get stats on a specific song",
+    usage="<song>",
+    aliases=["s"],
+  )
+  async def song_find(
+    self,
+    ctx: commands.Context,
+    *,
+    song: str,
+  ) -> None:
+    """Search database for song."""
+    song = ftfy.fix_text(song)
+
+    async with (
+      await db.create_pool() as pool,
+      pool.connection() as conn,
+      conn.cursor(
+        row_factory=dict_row,
+      ) as cur,
+    ):
+      song_match = await utils.song_find_fuzzy(song, cur)
+
+      if song_match:
         view = discord.ui.View()
 
-        try:
-            embed.set_thumbnail(
-                url=f"https://coverartarchive.org/release-group/{release['mbid']}/front-500",
-            )
-        except TypeError:
-            embed.set_thumbnail(
-                url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
-            )
-
-        if release:
-            try:
-                embed.add_field(
-                    name="Release:",
-                    value=f"{release['name']} _({release['release_date'].strftime('%B %d, %Y')})_",  # noqa: E501
-                    inline=False,
-                )
-            except AttributeError:
-                embed.add_field(
-                    name="Release:",
-                    value=f"{release['name']}",
-                    inline=False,
-                )
-
-        if song["original"] is False:
-            embed.add_field(
-                name="Original Artist:",
-                value=song["original_artist"],
-                inline=False,
-            )
-
-        if song["length"]:
-            embed.add_field(name="Length:", value=song["length"], inline=False)
-
-        embed.add_field(
-            name="Performances:",
-            value=f"{song['num_plays_public']}",
+        release = await self.get_first_release(
+          song_id=song_match["id"],
+          cur=cur,
         )
 
-        if song["num_plays_public"] > 0:
-            first_date_value = await utils.format_link(
-                url=f"https://www.databruce.com/events/{song['first_event']}",
-                text=song["first_date"],
-            )
+        song_info = await self.get_song_info(
+          song_id=song_match["id"],
+          cur=cur,
+        )
 
-            last_date_value = await utils.format_link(
-                url=f"https://www.databruce.com/events/{song['last_event']}",
-                text=song["last_date"],
-            )
+        embed = await self.song_embed(
+          song=song_info,
+          release=release,
+          ctx=ctx,
+          cur=cur,
+        )
 
-            gap = await self.calc_show_gap(cur=cur, last_show=song["last_event"])
+        if song_match["id"]:
+          databruce_button = discord.ui.Button(
+            style="link",
+            url=f"https://www.databruce.com/songs/{song_match['slug']}",
+            label="Databruce",
+          )
 
-            embed.add_field(
-                name="First Played:",
-                value=first_date_value,
-            )
+          view.add_item(item=databruce_button)
 
-            if gap > 0:
-                embed.add_field(
-                    name="Last Played:",
-                    value=f"{last_date_value} ({gap})",
-                )
-            else:
-                embed.add_field(
-                    name="Last Played:",
-                    value=f"{last_date_value}",
-                )
+        if release and release["mbid"]:
+          musicbrainz_button = discord.ui.Button(
+            style="link",
+            url=f"https://musicbrainz.org/release-group/{release['mbid']}",
+            label="Album on Musicbrainz",
+          )
 
-            embed.add_field(name="Opener:", value=song["opener"])
-            embed.add_field(name="Closer:", value=song["closer"])
-            embed.add_field(name="Frequency:", value=f"{song['frequency']}%")
+          view.add_item(item=musicbrainz_button)
 
-        return embed
+        if song_info["spotify_id"]:
+          spotify_button = discord.ui.Button(
+            style="link",
+            url=f"https://open.spotify.com/track/{song_info['spotify_id']}",
+            label="Spotify",
+            row=1,
+          )
 
-    @commands.hybrid_group(
-        name="song",
-        description="Get stats on a specific song",
-        usage="<song>",
-        aliases=["s"],
-    )
-    async def song_find(
-        self,
-        ctx: commands.Context,
-        *,
-        song: str,
-    ) -> None:
-        """Search database for song."""
-        song = ftfy.fix_text(song)
+          view.add_item(item=spotify_button)
 
-        async with (
-            await db.create_pool() as pool,
-            pool.connection() as conn,
-            conn.cursor(
-                row_factory=dict_row,
-            ) as cur,
-        ):
-            song_match = await utils.song_find_fuzzy(song, cur)
+        await ctx.send(embed=embed, view=view)
 
-            if song_match:
-                view = discord.ui.View()
+      else:
+        embed = await bot_embed.not_found_embed(
+          command=self.__class__.__name__,
+          message=song,
+        )
+        await ctx.send(embed=embed)
 
-                release = await self.get_first_release(
-                    song_id=song_match["id"],
-                    cur=cur,
-                )
+  @song_find.command(
+    name="tour",
+    description="Get tour stats on a song",
+    usage="<song>",
+  )
+  async def song_tour_count(
+    self,
+    ctx: commands.Context,
+    *,
+    song: str = "",
+  ) -> None:
+    """Search database by song and get tour counts."""
+    if song == "":
+      await ctx.send_help(ctx.command)
+      return
 
-                song_info = await self.get_song_info(
-                    song_id=song_match["id"],
-                    cur=cur,
-                )
+    async with (
+      await db.create_pool() as pool,
+      pool.connection() as conn,
+      conn.cursor(
+        row_factory=dict_row,
+      ) as cur,
+    ):
+      song_match = await utils.song_find_fuzzy(song, cur)
 
-                embed = await self.song_embed(
-                    song=song_info,
-                    release=release,
-                    ctx=ctx,
-                    cur=cur,
-                )
+      if song_match:
+        song_info = await self.get_song_info(
+          song_id=song_match["id"],
+          cur=cur,
+        )
 
-                if song_match["id"]:
-                    databruce_button = discord.ui.Button(
-                        style="link",
-                        url=f"https://www.databruce.com/songs/{song_match['uuid']}",
-                        label="Databruce",
-                    )
+        tour_stats = await self.get_count_by_tour(
+          song_match["id"],
+          cur,
+        )
 
-                    view.add_item(item=databruce_button)
+        menu = await viewmenu.create_dynamic_menu(
+          ctx=ctx,
+          page_counter="Page $/&",
+          rows=12,
+          title=f"Tour Count For: {song_info['song_name']}",
+        )
 
-                if release and release["mbid"]:
-                    musicbrainz_button = discord.ui.Button(
-                        style="link",
-                        url=f"https://musicbrainz.org/release-group/{release['mbid']}",
-                        label="Album on Musicbrainz",
-                    )
+        for index, row in enumerate(tour_stats, start=1):
+          menu.add_row(
+            f"{index}. _{row['years']}_: **{row['tour']}** - _{row['count']} time(s)_",  # noqa: E501
+          )
 
-                    view.add_item(item=musicbrainz_button)
+        await menu.start()
+      else:
+        embed = await bot_embed.not_found_embed(
+          command=self.__class__.__name__,
+          message=song,
+        )
+        await ctx.send(embed=embed)
 
-                if song_info["spotify_id"]:
-                    spotify_button = discord.ui.Button(
-                        style="link",
-                        url=f"https://open.spotify.com/track/{song_info['spotify_id']}",
-                        label="Spotify",
-                        row=1,
-                    )
+  @song_find.command(
+    name="year",
+    description="Get year stats on a song",
+    usage="<song>",
+  )
+  async def song_year_count(
+    self,
+    ctx: commands.Context,
+    *,
+    song: str = "",
+  ) -> None:
+    """Search database by song and get year counts."""
+    if song == "":
+      await ctx.send_help(ctx.command)
+      return
 
-                    view.add_item(item=spotify_button)
+    async with (
+      await db.create_pool() as pool,
+      pool.connection() as conn,
+      conn.cursor(
+        row_factory=dict_row,
+      ) as cur,
+    ):
+      song_match = await utils.song_find_fuzzy(song, cur)
 
-                await ctx.send(embed=embed, view=view)
+      if song_match:
+        song_info = await self.get_song_info(
+          song_id=song_match["id"],
+          cur=cur,
+        )
 
-            else:
-                embed = await bot_embed.not_found_embed(
-                    command=self.__class__.__name__,
-                    message=song,
-                )
-                await ctx.send(embed=embed)
+        year_stats = await self.get_count_by_year(
+          song_match["id"],
+          cur,
+        )
 
-    @song_find.command(
-        name="tour",
-        description="Get tour stats on a song",
-        usage="<song>",
-    )
-    async def song_tour_count(
-        self,
-        ctx: commands.Context,
-        *,
-        song: str = "",
-    ) -> None:
-        """Search database by song and get tour counts."""
-        if song == "":
-            await ctx.send_help(ctx.command)
-            return
+        menu = await viewmenu.create_dynamic_menu(
+          ctx=ctx,
+          page_counter="Page $/&",
+          rows=12,
+          title=f"Year Count For: {song_info['song_name']}",
+        )
 
-        async with (
-            await db.create_pool() as pool,
-            pool.connection() as conn,
-            conn.cursor(
-                row_factory=dict_row,
-            ) as cur,
-        ):
-            song_match = await utils.song_find_fuzzy(song, cur)
+        for index, row in enumerate(year_stats, start=1):
+          menu.add_row(f"{index}. **{row['year']}**: _{row['count']}_")
 
-            if song_match:
-                song_info = await self.get_song_info(
-                    song_id=song_match["id"],
-                    cur=cur,
-                )
+        await menu.start()
+      else:
+        embed = await bot_embed.not_found_embed(
+          command=self.__class__.__name__,
+          message=song,
+        )
+        await ctx.send(embed=embed)
 
-                tour_stats = await self.get_count_by_tour(
-                    song_match["id"],
-                    cur,
-                )
-
-                menu = await viewmenu.create_dynamic_menu(
-                    ctx=ctx,
-                    page_counter="Page $/&",
-                    rows=12,
-                    title=f"Tour Count For: {song_info['song_name']}",
-                )
-
-                for index, row in enumerate(tour_stats, start=1):
-                    menu.add_row(
-                        f"{index}. _{row['years']}_: **{row['tour']}** - _{row['count']} time(s)_",  # noqa: E501
-                    )
-
-                await menu.start()
-            else:
-                embed = await bot_embed.not_found_embed(
-                    command=self.__class__.__name__,
-                    message=song,
-                )
-                await ctx.send(embed=embed)
-
-    @song_find.command(
-        name="year",
-        description="Get year stats on a song",
-        usage="<song>",
-    )
-    async def song_year_count(
-        self,
-        ctx: commands.Context,
-        *,
-        song: str = "",
-    ) -> None:
-        """Search database by song and get year counts."""
-        if song == "":
-            await ctx.send_help(ctx.command)
-            return
-
-        async with (
-            await db.create_pool() as pool,
-            pool.connection() as conn,
-            conn.cursor(
-                row_factory=dict_row,
-            ) as cur,
-        ):
-            song_match = await utils.song_find_fuzzy(song, cur)
-
-            if song_match:
-                song_info = await self.get_song_info(
-                    song_id=song_match["id"],
-                    cur=cur,
-                )
-
-                year_stats = await self.get_count_by_year(
-                    song_match["id"],
-                    cur,
-                )
-
-                menu = await viewmenu.create_dynamic_menu(
-                    ctx=ctx,
-                    page_counter="Page $/&",
-                    rows=12,
-                    title=f"Year Count For: {song_info['song_name']}",
-                )
-
-                for index, row in enumerate(year_stats, start=1):
-                    menu.add_row(f"{index}. **{row['year']}**: _{row['count']}_")
-
-                await menu.start()
-            else:
-                embed = await bot_embed.not_found_embed(
-                    command=self.__class__.__name__,
-                    message=song,
-                )
-                await ctx.send(embed=embed)
-
-    async def snippet_song_count(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
-        """Get count of songs that a snippet was included as part of."""
-        res = await cur.execute(
-            """
+  async def snippet_song_count(self, song_id: int, cur: psycopg.AsyncCursor) -> dict:
+    """Get count of songs that a snippet was included as part of."""
+    res = await cur.execute(
+      """
             SELECT
                 distinct s1.song_name,
                 s1.brucebase_url AS url,
@@ -415,38 +415,38 @@ class Song(commands.Cog):
             GROUP BY s1.song_name, s1.brucebase_url
             ORDER BY count(s1.id) DESC
             """,
-            {"song_id": song_id},
-        )
-
-        return await res.fetchall()
-
-    @commands.hybrid_command(
-        name="snippet",
-        aliases=["snip"],
-        description="Find stats on when a song was included in another",
-        usage="<song>",
+      {"song_id": song_id},
     )
-    async def snippet_find(
-        self,
-        ctx: commands.Context,
-        *,
-        song: str,
-    ) -> None:
-        """Search database for songs as snippets."""
-        song = ftfy.fix_text(song)
 
-        async with (
-            await db.create_pool() as pool,
-            pool.connection() as conn,
-            conn.cursor(
-                row_factory=dict_row,
-            ) as cur,
-        ):
-            song_match = await utils.song_find_fuzzy(song, cur)
+    return await res.fetchall()
 
-            if song_match:
-                res = await cur.execute(
-                    """SELECT
+  @commands.hybrid_command(
+    name="snippet",
+    aliases=["snip"],
+    description="Find stats on when a song was included in another",
+    usage="<song>",
+  )
+  async def snippet_find(
+    self,
+    ctx: commands.Context,
+    *,
+    song: str,
+  ) -> None:
+    """Search database for songs as snippets."""
+    song = ftfy.fix_text(song)
+
+    async with (
+      await db.create_pool() as pool,
+      pool.connection() as conn,
+      conn.cursor(
+        row_factory=dict_row,
+      ) as cur,
+    ):
+      song_match = await utils.song_find_fuzzy(song, cur)
+
+      if song_match:
+        res = await cur.execute(
+          """SELECT
                             count(sn.snippet_id) AS count,
                             MIN(e.event_date) AS first,
                             (SELECT event_id FROM events WHERE
@@ -458,79 +458,79 @@ class Song(commands.Cog):
                         LEFT JOIN setlists s ON s.id = sn.setlist_id
                         LEFT JOIN events e ON e.event_id = s.event_id
                         WHERE snippet_id = %s""",
-                    (song_match["id"],),
-                )
+          (song_match["id"],),
+        )
 
-                snippet = await res.fetchone()
+        snippet = await res.fetchone()
 
-                snippet_songs = await self.snippet_song_count(
-                    song_id=song_match["id"],
-                    cur=cur,
-                )
+        snippet_songs = await self.snippet_song_count(
+          song_id=song_match["id"],
+          cur=cur,
+        )
 
-                release = await self.get_first_release(
-                    song_id=song_match["id"],
-                    cur=cur,
-                )
+        release = await self.get_first_release(
+          song_id=song_match["id"],
+          cur=cur,
+        )
 
-                song_info = await self.get_song_info(
-                    song_id=song_match["id"],
-                    cur=cur,
-                )
+        song_info = await self.get_song_info(
+          song_id=song_match["id"],
+          cur=cur,
+        )
 
-                embed = await bot_embed.create_embed(
-                    ctx=ctx,
-                    title=f"{song_info['song_name']} (snippet)",
-                    url=f"https://www.databruce.com/songs/{song_info['uuid']}",
-                )
+        embed = await bot_embed.create_embed(
+          ctx=ctx,
+          title=f"{song_info['song_name']} (snippet)",
+          url=f"https://www.databruce.com/songs/{song_info['uuid']}",
+        )
 
-                if release:
-                    embed.add_field(
-                        name="Original Release:",
-                        value=f"{release['name']} _({release['release_date']})_",
-                        inline=False,
-                    )
+        if release:
+          embed.add_field(
+            name="Original Release:",
+            value=f"{release['name']} _({release['release_date']})_",
+            inline=False,
+          )
 
-                try:
-                    embed.set_thumbnail(url=release["thumb"])
-                except TypeError:
-                    embed.set_thumbnail(
-                        url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
-                    )
+        try:
+          embed.set_thumbnail(url=release["thumb"])
+        except TypeError:
+          embed.set_thumbnail(
+            url="https://raw.githubusercontent.com/lilbud/brucebot/main/images/releases/default.jpg",
+          )
 
-                embed.add_field(name="Count:", value=snippet["count"])
+        embed.add_field(name="Count:", value=snippet["count"])
 
-                if snippet["count"] > 0:
-                    embed.add_field(
-                        name="First:",
-                        value=f"[{snippet['first']}](<https://www.databruce.com/events/{snippet['first_url']}>)",
-                    )
-                    embed.add_field(
-                        name="Last:",
-                        value=f"[{snippet['last']}](<https://www.databruce.com/events/{snippet['last_url']}>)",
-                    )
+        if snippet["count"] > 0:
+          embed.add_field(
+            name="First:",
+            value=f"[{snippet['first']}](<https://www.databruce.com/events/{snippet['first_url']}>)",
+          )
+          embed.add_field(
+            name="Last:",
+            value=f"[{snippet['last']}](<https://www.databruce.com/events/{snippet['last_url']}>)",
+          )
 
-                if snippet_songs:
-                    songs = [
-                        f"[{song['song_name']}](https://www.databruce.com/songs/{song['url']}) - {song['count']} times(s)"  # noqa: E501
-                        for song in snippet_songs
-                    ]
+        if snippet_songs:
+          songs = [
+            f"[{song['song_name']}](https://www.databruce.com/songs/{song['url']}) - {song['count']} times(s)"  # noqa: E501
+            for song in snippet_songs
+          ]
 
-                    embed.add_field(
-                        name="Included During:",
-                        value=f"{'\n'.join(songs)}",
-                        inline=False,
-                    )
+          embed.add_field(
+            name="Included During:",
+            value=f"{'\n'.join(songs)}",
+            inline=False,
+          )
 
-                await ctx.send(embed=embed)
-            else:
-                embed = await bot_embed.not_found_embed(
-                    command="snippet",
-                    message=song,
-                )
-                await ctx.send(embed=embed)
+        await ctx.send(embed=embed)
+      else:
+        embed = await bot_embed.not_found_embed(
+          command="snippet",
+          message=song,
+        )
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Load extension into bot."""
-    await bot.add_cog(Song(bot))
+  """Load extension into bot."""
+  await bot.add_cog(Song(bot))

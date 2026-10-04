@@ -91,15 +91,14 @@ class Setlist(commands.Cog):
                 SELECT DISTINCT
                     e.*,
                     v.id as venue_id,
-                    v1.uuid as venue_uuid,
-                    v.full_location AS venue_loc,
+                    v.slug as venue_slug,
+                    v.formatted AS venue_loc,
                     t1.name AS tour_leg,
                     r.name AS run,
                     t.tour_name AS tour
                 FROM "events" e
                 LEFT JOIN tours t ON t.id = e.tour_id
-                LEFT JOIN venues_text v ON v.id = e.venue_id
-                LEFT JOIN venues v1 ON v1.id = e.venue_id
+                LEFT JOIN venues v ON v.id = e.venue_id
                 LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
                 LEFT JOIN runs r ON r.id = e.run
                 WHERE e.event_date = %(date)s
@@ -124,15 +123,14 @@ class Setlist(commands.Cog):
                 SELECT DISTINCT
                     e.*,
                     v.id as venue_id,
-                    v1.uuid as venue_uuid,
-                    v.full_location AS venue_loc,
+                    v.slug as venue_slug,
+                    v.formatted AS venue_loc,
                     t1.name AS tour_leg,
                     r.name AS run,
                     t.tour_name AS tour
                 FROM "events" e
                 LEFT JOIN tours t ON t.id = e.tour_id
-                LEFT JOIN venues_text v ON v.id = e.venue_id
-                LEFT JOIN venues v1 ON v1.id = e.venue_id
+                LEFT JOIN venues v ON v.id = e.venue_id
                 LEFT JOIN tour_legs t1 ON t1.id = e.tour_leg
                 LEFT JOIN runs r ON r.id = e.run
                 WHERE e.event_id = %(event)s
@@ -187,7 +185,7 @@ class Setlist(commands.Cog):
   ) -> discord.File | discord.Embed:
     """Create embed."""
     description = [
-      f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_uuid']})",
+      f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_slug']})",
     ]
 
     if event["event_title"]:

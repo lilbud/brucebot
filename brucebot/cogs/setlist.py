@@ -78,7 +78,7 @@ class Setlist(commands.Cog):
     )
 
     run = await res.fetchone()
-    return run["run_name"]
+    return run["run_name"]  # ty: ignore[not-subscriptable]
 
   async def get_events_by_exact_date(
     self,
@@ -185,11 +185,11 @@ class Setlist(commands.Cog):
   ) -> discord.File | discord.Embed:
     """Create embed."""
     description = [
-      f"**Venue:** [{event['venue_loc']}](https://www.databruce.com/venues/{event['venue_slug']})",
+      f"**Venue:** {event['venue_loc']}",
     ]
 
-    if event["event_title"]:
-      description.append(f"**Title:** {event['event_title']}")
+    # if event["event_title"]:
+    #   description.append(f"**Title:** {event['event_title']}")
 
     if event["tour"]:
       text = f"**Tour:** {event['tour']}"
@@ -199,16 +199,15 @@ class Setlist(commands.Cog):
 
       description.append(text)
 
-    if event["note"]:
-      # print(event["note"])
-      description.append(
-        f"**Notes:**\n{utils.markdown_to_text(event['note'])}",
-      )
+    # if event["note"]:
+    #   description.append(
+    #     f"**Notes:**\n{utils.markdown_to_text(event['note'])}",
+    #   )
 
-    releases = await self.get_releases(event["event_id"], cur)
+    # releases = await self.get_releases(event["event_id"], cur)
 
-    if len(releases) > 0:
-      description.append(f"**Releases:** {', '.join(releases)}")
+    # if len(releases) > 0:
+    #   description.append(f"**Releases:**\n{', '.join(releases)}")
 
     title = f"{event['event_date'].strftime('%Y-%m-%d [%a]')}"
 
@@ -224,21 +223,25 @@ class Setlist(commands.Cog):
 
     res = await cur.execute(
       """
-            SELECT
-                s.set_name,
-                s.setlist
-            FROM "setlists_by_set_and_date" s
-            LEFT JOIN "events" e on e.event_id = s.event_id
-            WHERE e.event_id = %(event_id)s
-            GROUP BY s.set_order, s.set_name, s.setlist
-            order by s.set_order
+            select min(song_num), set_name, trim(';, ' from string_agg(songs, ' ')) as setlist from (
+              SELECT
+                  s.song_num,
+                  s.set_name,
+                  coalesce(s1.short_name, s1.song_name) || case when s.segue then ' >' else ' ,' end as songs
+              FROM "setlists" s
+              LEFT JOIN "events" e on e.id = s.event_id
+              left join songs s1 on s1.id = s.song_id
+              WHERE e.event_id = %(event_id)s
+              and s.set_name in ('Show', 'Set 1', 'Set 2', 'Encore', 'Pre-Show')
+              order by s.song_num
+            ) group by set_name order by 1
             """,
       event,
     )
 
     setlist = await res.fetchall()
 
-    notes = await self.get_event_notes(event_id=event["event_id"], cur=cur)
+    # notes = await self.get_event_notes(event_id=event["event_id"], cur=cur)
 
     if len(setlist) == 0:
       if event["event_date"] > datetime.datetime.now(tz=datetime.UTC).date():
@@ -267,11 +270,11 @@ class Setlist(commands.Cog):
           inline=False,
         )
 
-    if len(notes) > 0:
-      embed.add_field(
-        name="Setlist Notes:",
-        value=f"{re.sub("''", "'", '\n'.join(notes))}",
-      )
+    # if len(notes) > 0:
+    #   embed.add_field(
+    #     name="Setlist Notes:",
+    #     value=f"{re.sub("''", "'", '\n'.join(notes))}",
+    #   )
 
     event_info = {
       "run": await self.get_run(event["event_id"], cur),

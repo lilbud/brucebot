@@ -227,7 +227,7 @@ class Setlist(commands.Cog):
               SELECT
                   s.song_num,
                   s.set_name,
-                  coalesce(s1.short_name, s1.song_name) || case when s.segue then ' >' else ' ,' end as songs
+                  coalesce(nullif(s1.short_name, ''), s1.song_name) || case when s.segue then ' >' else ' ,' end as songs
               FROM "setlists" s
               LEFT JOIN "events" e on e.id = s.event_id
               left join songs s1 on s1.id = s.song_id

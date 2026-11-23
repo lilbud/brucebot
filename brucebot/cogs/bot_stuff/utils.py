@@ -4,7 +4,7 @@ import re
 import dateparser
 import discord
 import psycopg
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup as bs4
 from dateutil import parser
 from markdown import markdown
 
@@ -88,5 +88,5 @@ def markdown_to_text(markdown_string: str) -> str:
   html = re.sub(r"<details>[\s\S]*</details>", " ", html)
 
   # extract text
-  soup = BeautifulSoup(html, "html.parser")
-  return "".join(soup.findAll(text=True))
+  soup = bs4(html, "html.parser")
+  return "".join(soup.findAll())  # ty: ignore[missing-argument]
